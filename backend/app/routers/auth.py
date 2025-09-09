@@ -1,17 +1,17 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
-from app.models.user import User, UserOut, RegisterResponse
-from app.core.security import get_password_hash, create_access_token
+from app.models.user import User, RegisterResponse, Token
+from app.core.security import get_password_hash, verify_password, create_access_token
 from app.db import users_db
 import uuid
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-@router.post("/register", response_model=RegisterResponse)
-def register(user: User):
+@router.post("/signup", response_model=RegisterResponse)
+def signup(user: User):
     if user.email in users_db:
         raise HTTPException(status_code=400, detail="User already exists")
-    
 
     user_id = str(uuid.uuid4())
 
@@ -21,23 +21,28 @@ def register(user: User):
         "password": get_password_hash(user.password)
     }
 
-
-    access_token_expires = timedelta(minutes=30)
-    access_token = create_access_token(
-        data={"sub": user.email}, 
-        expires_delta=access_token_expires
-    )
-    refresh_token = create_access_token(
-        data={"sub": user.email}, 
-        expires_delta=timedelta(days=7)
-    )
-
     return {
         "user": {
             "id": user_id,
             "email": user.email,
             "name": user.name
         },
+        "msg": "User registered successfully "
+    }
+
+@router.post("/signin", response_model=Token)
+def signin(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = users_db.get(form_data.username)
+    if not user or not verify_password(form_data.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    access_token_expires = timedelta(minutes=30)
+    access_token = create_access_token(
+        data={"sub": form_data.username}, 
+        expires_delta=access_token_expires
+    )
+
+    return {
         "access_token": access_token,
-        "refresh_token": refresh_token
+        "token_type": "bearer"
     }

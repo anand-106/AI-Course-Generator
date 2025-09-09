@@ -1,17 +1,14 @@
-from pydantic import BaseModel, EmailStr
-import uuid
+from pydantic import BaseModel
 
 class User(BaseModel):
-    email: EmailStr
+    name: str
+    email: str
     password: str
-    name: str
-
-class UserOut(BaseModel):
-    id: str
-    email: EmailStr
-    name: str
 
 class RegisterResponse(BaseModel):
-    user: UserOut
+    user: dict
+    msg: str
+
+class Token(BaseModel):
     access_token: str
-    refresh_token: str
+    token_type: str
