@@ -4,3 +4,6 @@ pydantic
 passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
+pymongo
+python-dotenv
+PyJWT
