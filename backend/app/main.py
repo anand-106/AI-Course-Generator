@@ -7,12 +7,17 @@ backend_path = Path(__file__).parent.parent  # Go up one level from app/ to back
 sys.path.insert(0, str(backend_path))
 
 from fastapi import FastAPI
+from dotenv import load_dotenv
 
 from app.routers import auth
+from app.routers import course
+
+load_dotenv()
 
 app = FastAPI()
 
 app.include_router(auth.router)
+app.include_router(course.router)
 
 @app.get("/")
 def home():
