@@ -19,19 +19,25 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[st
     if ChatGoogleGenerativeAI and ChatPromptTemplate:
         try:
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "You are a precise teaching assistant. Explain concepts clearly with examples."),
-                ("human", "Create explanations for the topic '{topic}' covering subtopics: {subtopics}. Return a JSON object mapping subtopic to explanation. Keep each under 180 words.")
+                ("system", "Return JSON only. You write concise, didactic explanations with 1 short example each."),
+                ("human", (
+                    "For topic '{topic}', write explanations for subtopics: {subtopics}. "
+                    "Return STRICT JSON mapping subtopic -> explanation (120-180 words)."
+                )),
             ])
             chain = prompt | ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.2)
             resp = chain.invoke({"topic": topic, "subtopics": ", ".join(subtopics)})
-            # LangChain returns AIMessage; try to parse JSON-like content
-            import json
+            import json, re
             content = resp.content if hasattr(resp, "content") else str(resp)
             try:
                 return json.loads(content)
             except Exception:
-                # Simple heuristic split if JSON parsing fails
-                return {st: f"Overview of {st} under {topic}." for st in subtopics}
+                m = re.search(r"\{[\s\S]*\}", content)
+                if m:
+                    try:
+                        return json.loads(m.group(0))
+                    except Exception:
+                        pass
         except Exception:
             pass
 

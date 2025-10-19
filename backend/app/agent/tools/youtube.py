@@ -20,7 +20,11 @@ def search_youtube_videos(query: str, limit: int = 5) -> List[Dict[str, str]]:
                     "title": r.get("title", ""),
                     "channel": r.get("channel", {}).get("name", ""),
                     "duration": r.get("duration", ""),
-                    "link": r.get("link", ""),
+                    # Build a canonical watch URL using the video id for embedding
+                    "link": (
+                        f"https://www.youtube.com/watch?v={r.get('id')}"
+                        if r.get("id") else r.get("link", "")
+                    ),
                 }
                 for r in results
             ]
@@ -33,6 +37,7 @@ def search_youtube_videos(query: str, limit: int = 5) -> List[Dict[str, str]]:
             "title": f"Intro to {query}",
             "channel": "Example Channel",
             "duration": "10:00",
+            # Fallback to a search page when no ID is available
             "link": "https://www.youtube.com/results?search_query=" + query.replace(" ", "+"),
         }
     ]

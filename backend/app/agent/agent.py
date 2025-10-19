@@ -35,8 +35,8 @@ def node_enhance_prompt(state: 'CourseState') -> 'CourseState':
     if ChatGoogleGenerativeAI and ChatPromptTemplate:
         try:
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "You refine course prompts to be specific, level-appropriate, and goal-oriented."),
-                ("human", "Refine this course prompt for clarity and coverage: {prompt}")
+                ("system", "Return ONLY a concise course title (max 12 words). No preface or explanation."),
+                ("human", "Create a concise course title for: {prompt}")
             ])
             chain = prompt | ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.2)
             resp = chain.invoke({"prompt": user_prompt})
@@ -44,7 +44,7 @@ def node_enhance_prompt(state: 'CourseState') -> 'CourseState':
         except Exception:
             enhanced = f"Course on: {user_prompt}. Include fundamentals, practical projects, and assessments."
     else:
-        enhanced = f"Course on: {user_prompt}. Include fundamentals, practical projects, and assessments."
+        enhanced = user_prompt.strip()[:80]
 
     state["enhanced_prompt"] = enhanced
     return state
@@ -55,8 +55,8 @@ def node_generate_topics(state: 'CourseState') -> 'CourseState':
     if ChatGoogleGenerativeAI and ChatPromptTemplate:
         try:
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "You create stepwise curricula consisting of 6-12 atomic topics."),
-                ("human", "Propose a linear list of course topics for: {enhanced}. Return as a JSON array of strings.")
+                ("system", "You are an instructional designer. Return JSON only."),
+                ("human", "For the course '{enhanced}', list 8-12 progressively ordered topics. Return strictly as a JSON array of strings, with no extra text.")
             ])
             chain = prompt | ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.2)
             resp = chain.invoke({"enhanced": enhanced})
@@ -67,30 +67,51 @@ def node_generate_topics(state: 'CourseState') -> 'CourseState':
                 if not isinstance(topics, list):
                     raise ValueError
             except Exception:
-                topics = [
-                    "Introduction",
-                    "Core Concepts",
-                    "Hands-on Example",
-                    "Advanced Techniques",
-                    "Project",
-                    "Assessment",
-                ]
+                # attempt to salvage JSON array from the text
+                import re
+                m = re.search(r"\[[\s\S]*\]", content)
+                if m:
+                    try:
+                        topics = json.loads(m.group(0))
+                    except Exception:
+                        topics = []
+                if not topics:
+                    topics = [
+                        "Introduction",
+                        "Python Basics",
+                        "Data Structures",
+                        "NumPy Fundamentals",
+                        "Pandas Essentials",
+                        "Exploratory Data Analysis",
+                        "Data Visualization",
+                        "Data Cleaning",
+                        "Mini Project",
+                        "Assessment",
+                    ]
         except Exception:
             topics = [
                 "Introduction",
-                "Core Concepts",
-                "Hands-on Example",
-                "Advanced Techniques",
-                "Project",
+                "Python Basics",
+                "Data Structures",
+                "NumPy Fundamentals",
+                "Pandas Essentials",
+                "Exploratory Data Analysis",
+                "Data Visualization",
+                "Data Cleaning",
+                "Mini Project",
                 "Assessment",
             ]
     else:
         topics = [
             "Introduction",
-            "Core Concepts",
-            "Hands-on Example",
-            "Advanced Techniques",
-            "Project",
+            "Python Basics",
+            "Data Structures",
+            "NumPy Fundamentals",
+            "Pandas Essentials",
+            "Exploratory Data Analysis",
+            "Data Visualization",
+            "Data Cleaning",
+            "Mini Project",
             "Assessment",
         ]
 
@@ -98,12 +119,41 @@ def node_generate_topics(state: 'CourseState') -> 'CourseState':
     return state
 
 
+def _llm_subtopics(topic: str) -> List[str]:
+    if ChatGoogleGenerativeAI and ChatPromptTemplate:
+        try:
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", "Return JSON only."),
+                ("human", "List 3-5 key subtopics for the topic '{topic}'. Return strictly as a JSON array of short strings.")
+            ])
+            chain = prompt | ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.2)
+            resp = chain.invoke({"topic": topic})
+            import json, re
+            content = resp.content if hasattr(resp, "content") else str(resp)
+            try:
+                arr = json.loads(content)
+                if isinstance(arr, list) and arr:
+                    return [str(x) for x in arr][:5]
+            except Exception:
+                m = re.search(r"\[[\s\S]*\]", content)
+                if m:
+                    try:
+                        arr = json.loads(m.group(0))
+                        if isinstance(arr, list) and arr:
+                            return [str(x) for x in arr][:5]
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+    return [f"{topic} overview", f"{topic} practice", f"{topic} quiz"]
+
+
 def node_generate_course(state: 'CourseState') -> 'CourseState':
     topics = state.get("topics", [])
     course_modules: Dict[str, Any] = {}
 
     for topic in topics:
-        subtopics = [f"{topic} overview", f"{topic} practice", f"{topic} quiz"]
+        subtopics = _llm_subtopics(topic)
         explanations = generate_explanations_for_topic(topic, subtopics)
         videos = search_youtube_videos(f"{topic} tutorial", limit=3)
         mermaid = generate_mermaid_for_topic(topic, list(explanations.keys()))
@@ -115,8 +165,10 @@ def node_generate_course(state: 'CourseState') -> 'CourseState':
             "mermaid": mermaid,
         }
 
+    # Keep summary minimal so frontend focuses on modules
+    title = state.get("enhanced_prompt") or state.get("prompt", "Course")
     state["course"] = {
-        "summary": state.get("enhanced_prompt", "Course"),
+        "summary": str(title)[:100],
         "modules": course_modules,
     }
     return state
