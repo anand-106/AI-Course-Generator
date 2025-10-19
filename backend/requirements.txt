@@ -7,3 +7,10 @@ python-multipart
 pymongo
 python-dotenv
 PyJWT
+langgraph
+langchain-core
+langchain-openai
+openai
+youtube-search-python
+langchain-google-genai
+google-generativeai
