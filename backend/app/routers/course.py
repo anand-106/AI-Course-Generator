@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, Any
 
 from app.agent.agent import run_workflow
+from app.core.security import get_current_user
 
 
 router = APIRouter(prefix="/course", tags=["Course"])
@@ -13,7 +14,10 @@ class CourseRequest(BaseModel):
 
 
 @router.post("/generate")
-def generate_course(req: CourseRequest) -> Dict[str, Any]:
+def generate_course(
+    req: CourseRequest,
+    current_user: str = Depends(get_current_user)
+) -> Dict[str, Any]:
     try:
         course = run_workflow(req.prompt)
         return {"course": course}

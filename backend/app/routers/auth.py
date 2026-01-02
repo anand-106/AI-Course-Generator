@@ -15,6 +15,9 @@ class SignInRequest(BaseModel):
 
 @router.post("/signup", response_model=RegisterResponse)
 def signup(user: User):
+    if users_collection is None:
+        raise HTTPException(status_code=503, detail="Database connection not available. Please check your MongoDB configuration.")
+    
     existing_user = users_collection.find_one({"email": user.email})
     if existing_user:
         raise HTTPException(status_code=400, detail="User already exists")
@@ -39,6 +42,9 @@ def signup(user: User):
 
 @router.post("/signin", response_model=Token)
 def signin(request: SignInRequest):
+    if users_collection is None:
+        raise HTTPException(status_code=503, detail="Database connection not available. Please check your MongoDB configuration.")
+    
     user = users_collection.find_one({"email": request.email})
     if not user or not verify_password(request.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
