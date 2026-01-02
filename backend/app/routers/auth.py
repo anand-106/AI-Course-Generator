@@ -4,7 +4,7 @@ from datetime import timedelta
 from pydantic import BaseModel
 from app.models.user import User, RegisterResponse, Token
 from app.core.security import get_password_hash, verify_password, create_access_token
-from app.db import users_collection
+from app.db import users_collection, connection_error
 import uuid
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -16,7 +16,11 @@ class SignInRequest(BaseModel):
 @router.post("/signup", response_model=RegisterResponse)
 def signup(user: User):
     if users_collection is None:
-        raise HTTPException(status_code=503, detail="Database connection not available. Please check your MongoDB configuration.")
+        error_detail = connection_error if connection_error else "Database connection not available."
+        raise HTTPException(
+            status_code=503, 
+            detail=f"Database connection failed. {error_detail} Please check your MongoDB configuration in the .env file and ensure your IP is whitelisted in MongoDB Atlas."
+        )
     
     existing_user = users_collection.find_one({"email": user.email})
     if existing_user:
@@ -43,7 +47,11 @@ def signup(user: User):
 @router.post("/signin", response_model=Token)
 def signin(request: SignInRequest):
     if users_collection is None:
-        raise HTTPException(status_code=503, detail="Database connection not available. Please check your MongoDB configuration.")
+        error_detail = connection_error if connection_error else "Database connection not available."
+        raise HTTPException(
+            status_code=503, 
+            detail=f"Database connection failed. {error_detail} Please check your MongoDB configuration in the .env file and ensure your IP is whitelisted in MongoDB Atlas."
+        )
     
     user = users_collection.find_one({"email": request.email})
     if not user or not verify_password(request.password, user["password"]):

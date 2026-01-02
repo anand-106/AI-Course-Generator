@@ -22,7 +22,16 @@ app.include_router(course.router)
 
 @app.get("/")
 def home():
-    return {"msg": "Welcome to AI Course Generator API 🚀"}
+    return {"msg": "Welcome to AI Course Generator"}
+
+@app.get("/health")
+def health_check():
+    from app.db import users_collection, connection_error
+    return {
+        "status": "ok" if users_collection is not None else "error",
+        "database": "connected" if users_collection is not None else "disconnected",
+        "error": connection_error if connection_error else None
+    }
 
 # CORS for Vite dev server and production frontend
 app.add_middleware(

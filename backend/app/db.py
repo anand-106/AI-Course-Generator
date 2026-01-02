@@ -13,6 +13,12 @@ print(f"[INFO] Loading .env from: {env_path}")  # Debug log
 MONGO_URI = os.getenv("MONGODB_URI")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
 
+# Strip quotes if present (common in .env files)
+if MONGO_URI:
+    MONGO_URI = MONGO_URI.strip('"').strip("'")
+if DATABASE_NAME:
+    DATABASE_NAME = DATABASE_NAME.strip('"').strip("'")
+
 print(f"[INFO] MONGO_URI Loaded: {MONGO_URI is not None}")
 print(f"[INFO] DATABASE_NAME Loaded: {DATABASE_NAME}")
 
@@ -20,17 +26,38 @@ print(f"[INFO] DATABASE_NAME Loaded: {DATABASE_NAME}")
 client = None
 db = None
 users_collection = None
+connection_error = None
+
+# Export connection_error for use in routers
+__all__ = ['client', 'db', 'users_collection', 'connection_error']
 
 if not MONGO_URI:
-    print("[WARNING] MONGODB_URI not found in .env file! Server will start but database features will not work.")
+    print("[ERROR] MONGODB_URI not found in .env file!")
+    print("[ERROR] Please add MONGODB_URI to your .env file in the project root.")
+    connection_error = "MONGODB_URI not configured in .env file"
 else:
     try:
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        print(f"[INFO] Attempting to connect to MongoDB...")
+        print(f"[INFO] Connection string: {MONGO_URI[:50]}..." if len(MONGO_URI) > 50 else f"[INFO] Connection string: {MONGO_URI}")
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=15000)
         client.admin.command("ping")
         print("[SUCCESS] Connected to MongoDB Atlas!")
+        if not DATABASE_NAME:
+            DATABASE_NAME = "ai_course_generator"
+            print(f"[INFO] Using default database name: {DATABASE_NAME}")
         db = client[DATABASE_NAME]
         users_collection = db["users"]
-    except (ServerSelectionTimeoutError, ConfigurationError, Exception) as e:
-        print(f"[WARNING] Could not connect to MongoDB: {e}")
-        print("[WARNING] Server will start but database features will not work.")
-        print("[WARNING] Please check your MONGODB_URI in the .env file.")
+        print(f"[SUCCESS] Using database: {DATABASE_NAME}")
+        print(f"[SUCCESS] Collection 'users' is ready!")
+    except ServerSelectionTimeoutError as e:
+        connection_error = f"Connection timeout: Could not reach MongoDB server. Check your network connection and IP whitelist in MongoDB Atlas."
+        print(f"[ERROR] {connection_error}")
+        print(f"[ERROR] Full error: {e}")
+    except ConfigurationError as e:
+        connection_error = f"Invalid MongoDB connection string. Please check your MONGODB_URI format."
+        print(f"[ERROR] {connection_error}")
+        print(f"[ERROR] Full error: {e}")
+    except Exception as e:
+        connection_error = f"MongoDB connection failed: {str(e)}"
+        print(f"[ERROR] {connection_error}")
+        print(f"[ERROR] Error type: {type(e).__name__}")
