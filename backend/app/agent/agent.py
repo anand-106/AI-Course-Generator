@@ -1,17 +1,25 @@
 from typing import Dict, List, Any
+import os
 
 try:
     from langgraph.graph import StateGraph, END
-except Exception:
+except Exception as e:
     StateGraph = None
     END = None
+    print(f"[WARNING] LangGraph not available: {e}")
 
 try:
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_core.prompts import ChatPromptTemplate
-except Exception:
+    # Check if API key is set
+    if not os.getenv("GOOGLE_API_KEY"):
+        print("[WARNING] GOOGLE_API_KEY not set. AI features will use fallback content.")
+        ChatGoogleGenerativeAI = None
+        ChatPromptTemplate = None
+except Exception as e:
     ChatGoogleGenerativeAI = None
     ChatPromptTemplate = None
+    print(f"[WARNING] LangChain Google GenAI not available: {e}")
 
 from app.agent.tools import (
     generate_explanations_for_topic,
@@ -126,7 +134,7 @@ def _llm_subtopics(topic: str) -> List[str]:
                 ("system", "Return JSON only."),
                 ("human", "List 3-5 key subtopics for the topic '{topic}'. Return strictly as a JSON array of short strings.")
             ])
-            chain = prompt | ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.2)
+            chain = prompt | ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)
             resp = chain.invoke({"topic": topic})
             import json, re
             content = resp.content if hasattr(resp, "content") else str(resp)

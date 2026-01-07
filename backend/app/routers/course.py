@@ -19,9 +19,17 @@ def generate_course(
     current_user: str = Depends(get_current_user)
 ) -> Dict[str, Any]:
     try:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Generating course for user: {current_user}, prompt: {req.prompt[:50]}...")
         course = run_workflow(req.prompt)
         return {"course": course}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        import traceback
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Course generation error: {str(exc)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Course generation failed: {str(exc)}")
 
 

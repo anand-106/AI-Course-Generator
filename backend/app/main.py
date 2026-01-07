@@ -6,16 +6,36 @@ from pathlib import Path
 backend_path = Path(__file__).parent.parent  # Go up one level from app/ to backend/
 sys.path.insert(0, str(backend_path))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+import traceback
+import logging
 
 from app.routers import auth
 from app.routers import course
 
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {str(exc)}")
+    logger.error(traceback.format_exc())
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal server error: {str(exc)}",
+            "type": type(exc).__name__
+        }
+    )
 
 app.include_router(auth.router)
 app.include_router(course.router)

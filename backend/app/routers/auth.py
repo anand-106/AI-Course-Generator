@@ -15,34 +15,55 @@ class SignInRequest(BaseModel):
 
 @router.post("/signup", response_model=RegisterResponse)
 def signup(user: User):
-    if users_collection is None:
-        error_detail = connection_error if connection_error else "Database connection not available."
-        raise HTTPException(
-            status_code=503, 
-            detail=f"Database connection failed. {error_detail} Please check your MongoDB configuration in the .env file and ensure your IP is whitelisted in MongoDB Atlas."
-        )
+    import logging
+    import traceback
+    logger = logging.getLogger(__name__)
     
-    existing_user = users_collection.find_one({"email": user.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User already exists")
+    try:
+        if users_collection is None:
+            error_detail = connection_error if connection_error else "Database connection not available."
+            raise HTTPException(
+                status_code=503, 
+                detail=f"Database connection failed. {error_detail} Please check your MongoDB configuration in the .env file and ensure your IP is whitelisted in MongoDB Atlas."
+            )
+        
+        logger.info(f"Checking for existing user: {user.email}")
+        existing_user = users_collection.find_one({"email": user.email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="User already exists")
 
-    user_id = str(uuid.uuid4())
+        logger.info(f"Creating new user: {user.email}")
+        user_id = str(uuid.uuid4())
+        
+        logger.info("Hashing password...")
+        hashed_password = get_password_hash(user.password)
+        logger.info("Password hashed successfully")
 
-    users_collection.insert_one({
-        "id": user_id,
-        "email": user.email,
-        "name": user.name,
-        "password": get_password_hash(user.password)
-    })
-
-    return {
-        "user": {
+        user_doc = {
             "id": user_id,
             "email": user.email,
-            "name": user.name
-        },
-        "msg": "User registered successfully"
-    }
+            "name": user.name,
+            "password": hashed_password
+        }
+        
+        logger.info(f"Inserting user document: {user.email}")
+        result = users_collection.insert_one(user_doc)
+        logger.info(f"User inserted with ID: {result.inserted_id}")
+
+        return {
+            "user": {
+                "id": user_id,
+                "email": user.email,
+                "name": user.name
+            },
+            "msg": "User registered successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Signup error: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Signup failed: {str(e)}")
 
 @router.post("/signin", response_model=Token)
 def signin(request: SignInRequest):
