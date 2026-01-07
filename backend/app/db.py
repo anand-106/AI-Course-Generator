@@ -4,16 +4,15 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 
-# Go two levels up (app -> backend -> project root)
 env_path = Path(__file__).resolve().parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-print(f"[INFO] Loading .env from: {env_path}")  # Debug log
+print(f"[INFO] Loading .env from: {env_path}")
 
 MONGO_URI = os.getenv("MONGODB_URI")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
 
-# Strip quotes if present (common in .env files)
+
 if MONGO_URI:
     MONGO_URI = MONGO_URI.strip('"').strip("'")
 if DATABASE_NAME:
@@ -22,7 +21,6 @@ if DATABASE_NAME:
 print(f"[INFO] MONGO_URI Loaded: {MONGO_URI is not None}")
 print(f"[INFO] DATABASE_NAME Loaded: {DATABASE_NAME}")
 
-# Initialize variables
 client = None
 db = None
 users_collection = None

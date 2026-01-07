@@ -11,18 +11,22 @@ export default function Home() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [generationStatus, setGenerationStatus] = useState("Initializing...");
 
   async function handleGenerate(e) {
     e.preventDefault();
     setError("");
     setCourse(null);
     setLoading(true);
+    setGenerationStatus("Initializing...");
+
     try {
       const res = await fetch(`${API_BASE}/course/generate`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({ prompt }),
       });
+
       if (!res.ok) {
         if (res.status === 401) {
           logout();
@@ -30,11 +34,56 @@ export default function Home() {
         }
         throw new Error(`API error ${res.status}`);
       }
-      const data = await res.json();
-      setCourse(data.course);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        // Keep the last partial line in the buffer
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const event = JSON.parse(line);
+
+            if (event.type === "status") {
+              setGenerationStatus(event.message);
+            } else if (event.type === "meta") {
+              setCourse({
+                title: event.data.title,
+                modules: {} // Initialize with empty modules
+              });
+            } else if (event.type === "module") {
+              setCourse(prev => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  modules: {
+                    ...prev.modules,
+                    [event.data.module_title]: event.data
+                  }
+                };
+              });
+            } else if (event.type === "complete") {
+              setCourse(event.data); // Ensure consistency
+              setLoading(false);
+            } else if (event.type === "error") {
+              throw new Error(event.message);
+            }
+          } catch (parseError) {
+            console.error("Error parsing stream line:", line, parseError);
+          }
+        }
+      }
     } catch (err) {
       setError(err?.message || "Something went wrong");
-    } finally {
       setLoading(false);
     }
   }
@@ -135,22 +184,16 @@ export default function Home() {
           </div>
         )}
 
-        {/* Loading State */}
+        {/* Loading State - Shows progress message */}
         {loading && (
-          <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl p-12 border border-white/20 animate-pulse">
-            <div className="flex flex-col items-center justify-center space-y-6">
+          <div className="mt-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/20 animate-pulse">
+            <div className="flex flex-col items-center justify-center space-y-4">
               <div className="relative">
-                <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-                <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-blue-600 animate-pulse" />
+                <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
               </div>
               <div className="text-center">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Creating Your Course</h3>
-                <p className="text-gray-600">Our AI is crafting a comprehensive course structure for you...</p>
-              </div>
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">Creating Your Course</h3>
+                <p className="text-blue-600 font-medium">{generationStatus}</p>
               </div>
             </div>
           </div>

@@ -7,7 +7,7 @@ let mermaidInstance = null;
 async function ensureMermaid() {
   if (mermaidInstance) return mermaidInstance;
   const mermaid = (await import("mermaid"))?.default ?? (await import("mermaid"));
-  mermaid.initialize({ 
+  mermaid.initialize({
     startOnLoad: false,
     theme: 'default',
     themeVariables: {
@@ -26,39 +26,48 @@ async function ensureMermaid() {
 function MermaidBlock({ code, idSuffix }) {
   const containerRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   useEffect(() => {
+    let mounted = true;
+
     (async () => {
       if (!code || !containerRef.current) return;
       setIsLoading(true);
-      const mermaid = await ensureMermaid();
-      const targetId = `mermaid-${idSuffix}`;
       try {
-        mermaid.render(`${targetId}-svg`, code, (svg) => {
+        const mermaid = await ensureMermaid();
+        const targetId = `mermaid-${idSuffix}-${Math.random().toString(36).substr(2, 9)}`;
+
+        // Mermaid v10+ returns a promise with { svg }
+        const { svg } = await mermaid.render(targetId, code);
+
+        if (mounted && containerRef.current) {
           containerRef.current.innerHTML = svg;
           setIsLoading(false);
-        });
+        }
       } catch (e) {
-        setIsLoading(false);
+        console.error("Mermaid error:", e);
+        if (mounted) setIsLoading(false);
       }
     })();
+
+    return () => { mounted = false; };
   }, [code, idSuffix]);
-  
+
   return (
     <div className="relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-2xl">
+        <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-2xl z-10">
           <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
         </div>
       )}
-      <div ref={containerRef} className="overflow-x-auto" />
+      <div ref={containerRef} className="overflow-x-auto min-h-[100px]" />
     </div>
   );
 }
 
 function YouTubeEmbed({ link }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   try {
     const url = new URL(link);
     let videoId = url.searchParams.get("v");
@@ -69,9 +78,9 @@ function YouTubeEmbed({ link }) {
       videoId = url.pathname.slice(1);
     }
     if (!videoId) return (
-      <a 
-        href={link} 
-        target="_blank" 
+      <a
+        href={link}
+        target="_blank"
         rel="noreferrer"
         className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors duration-300 shadow-md hover:shadow-lg"
       >
@@ -79,7 +88,7 @@ function YouTubeEmbed({ link }) {
         Watch on YouTube
       </a>
     );
-    
+
     return (
       <div className="space-y-3">
         <button
@@ -119,11 +128,32 @@ function YouTubeEmbed({ link }) {
   }
 }
 
+function ExplanationContent({ content }) {
+  if (typeof content === 'string') {
+    return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{content}</p>;
+  }
+
+  // Handle structured object content
+  if (typeof content === 'object' && content !== null) {
+    return (
+      <div className="space-y-3">
+        {Object.entries(content).map(([key, value]) => (
+          <div key={key}>
+            <span className="font-bold text-gray-900">{key}: </span>
+            <span className="text-gray-700">{String(value)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
 function ModuleCard({ title, data, index }) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div 
+    <div
       className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-6 animate-slide-up"
       style={{ animationDelay: `${index * 100}ms` }}
     >
@@ -163,7 +193,7 @@ function ModuleCard({ title, data, index }) {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <h4 className="font-semibold text-blue-900 mb-2 text-lg">{sub}</h4>
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{text}</p>
+                    <ExplanationContent content={text} />
                   </div>
                 ))}
               </div>

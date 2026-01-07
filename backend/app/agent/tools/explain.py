@@ -1,51 +1,73 @@
 from typing import List, Dict
+import os
+import json
+import re
 
 try:
-    # Prefer Gemini via LangChain
-    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_groq import ChatGroq
     from langchain_core.prompts import ChatPromptTemplate
-except Exception:  # pragma: no cover - allow running without these deps during editing
-    ChatGoogleGenerativeAI = None
+except Exception:
+    ChatGroq = None
     ChatPromptTemplate = None
 
 
 def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[str, str]:
     """
-    Generate concise, structured explanations for a topic and its subtopics.
-
-    If OpenAI credentials and langchain are configured, use the LLM; otherwise,
-    fall back to a deterministic template-based explanation.
+    Generate detailed, structured explanations for a topic and its subtopics.
     """
-    if ChatGoogleGenerativeAI and ChatPromptTemplate:
+    
+    # Check if Groq is available and configured
+    if ChatGroq and ChatPromptTemplate and os.getenv("GROQ_API_KEY"):
         try:
+            llm = ChatGroq(
+                model="llama-3.3-70b-versatile",
+                temperature=0.3
+            )
+            
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "Return JSON only. You write concise, didactic explanations with 1 short example each."),
+                ("system", """
+                You are an expert instructor. return JSON only.
+                For each subtopic, write a DETAILED, COMPREHENSIVE explanation (150-250 words).
+                Include:
+                1. Core Concept: Clear definition.
+                2. Real-world Context: Why it matters.
+                3. Key Details: How it works.
+                4. Example/Analogy: To clarify the concept.
+                """),
                 ("human", (
-                    "For topic '{topic}', write explanations for subtopics: {subtopics}. "
-                    "Return STRICT JSON mapping subtopic -> explanation (120-180 words)."
+                    "Topic: '{topic}'\n"
+                    "Subtopics: {subtopics}\n\n"
+                    "Return strictly a JSON object object mapping subtopic_name -> detailed_explanation_string."
                 )),
             ])
-            chain = prompt | ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.2)
+            
+            chain = prompt | llm
             resp = chain.invoke({"topic": topic, "subtopics": ", ".join(subtopics)})
-            import json, re
+            
             content = resp.content if hasattr(resp, "content") else str(resp)
+            
+            # JSON clean-up logic
             try:
                 return json.loads(content)
             except Exception:
+                # regex fallback to find the JSON object
                 m = re.search(r"\{[\s\S]*\}", content)
                 if m:
                     try:
                         return json.loads(m.group(0))
                     except Exception:
                         pass
-        except Exception:
+        except Exception as e:
+            print(f"Error generating explanations: {e}")
             pass
 
-    # Fallback: deterministic stub
+    # Fallback if LLM fails
     return {
         st: (
-            f"{st}: Core ideas within {topic}. Definition, why it matters, a simple example, "
-            f"and common pitfalls. Practice: apply {st} to a small, real-world scenario."
+            f"**{st}** is a fundamental concept in {topic}. \n\n"
+            "In this module, we explore its core principles and applications. "
+            "Understanding this is crucial for mastering the broader subject. "
+            "We will delve into practical examples and best practices to ensure deep comprehension."
         ) for st in subtopics
     }
 
