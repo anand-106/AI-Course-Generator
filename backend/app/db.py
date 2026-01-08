@@ -24,10 +24,10 @@ print(f"[INFO] DATABASE_NAME Loaded: {DATABASE_NAME}")
 client = None
 db = None
 users_collection = None
+courses_collection = None
 connection_error = None
 
-# Export connection_error for use in routers
-__all__ = ['client', 'db', 'users_collection', 'connection_error']
+__all__ = ['client', 'db', 'users_collection', 'courses_collection', 'connection_error']
 
 if not MONGO_URI:
     print("[ERROR] MONGODB_URI not found in .env file!")
@@ -45,8 +45,10 @@ else:
             print(f"[INFO] Using default database name: {DATABASE_NAME}")
         db = client[DATABASE_NAME]
         users_collection = db["users"]
+        courses_collection = db["courses"]
         print(f"[SUCCESS] Using database: {DATABASE_NAME}")
         print(f"[SUCCESS] Collection 'users' is ready!")
+        print(f"[SUCCESS] Collection 'courses' is ready!")
     except ServerSelectionTimeoutError as e:
         connection_error = f"Connection timeout: Could not reach MongoDB server. Check your network connection and IP whitelist in MongoDB Atlas."
         print(f"[ERROR] {connection_error}")

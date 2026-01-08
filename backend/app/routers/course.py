@@ -1,11 +1,14 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Dict, Any, AsyncGenerator
+from typing import Dict, Any, AsyncGenerator, List
 import json
+from datetime import datetime
+import uuid
 
 from app.agent.agent import run_workflow_stream
 from app.core.security import get_current_user
+from app.db import courses_collection
 
 
 router = APIRouter(prefix="/course", tags=["Course"])
@@ -22,6 +25,7 @@ async def generate_course(
 ):
     import logging
     logger = logging.getLogger(__name__)
+    course_id = str(uuid.uuid4())
     logger.info(f"Generating course stream for user: {current_user}, prompt: {req.prompt[:50]}...")
 
     async def event_generator() -> AsyncGenerator[str, None]:
@@ -62,9 +66,25 @@ async def generate_course(
                                 sent_topics.add(topic)
                                 
                     elif node_name == "finalize_course":
+                        full_course = updates.get("course", {})
+                        # Save to DB
+                        if courses_collection is not None:
+                            try:
+                                courses_collection.insert_one({
+                                    "course_id": course_id,
+                                    "user_id": current_user,
+                                    "prompt": req.prompt,
+                                    "title": full_course.get("title", "Untitled Course"),
+                                    "course_data": full_course,
+                                    "created_at": datetime.utcnow()
+                                })
+                                logger.info(f"Course {course_id} saved to DB")
+                            except Exception as e:
+                                logger.error(f"Failed to save course to DB: {e}")
+
                         yield json.dumps({
                             "type": "complete",
-                            "data": updates.get("course", {})
+                            "data": full_course
                         }) + "\n"
                         
         except Exception as exc:
@@ -74,5 +94,21 @@ async def generate_course(
             yield json.dumps({"type": "error", "message": str(exc)}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
+
+
+@router.get("/list")
+async def get_user_courses(current_user: str = Depends(get_current_user)) -> List[Dict[str, Any]]:
+    if courses_collection is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    cursor = courses_collection.find({"user_id": current_user}).sort("created_at", -1)
+    courses = []
+    
+    # helper to serialise id
+    for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        courses.append(doc)
+        
+    return courses
 
 

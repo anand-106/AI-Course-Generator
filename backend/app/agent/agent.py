@@ -20,7 +20,7 @@ if not os.getenv("GROQ_API_KEY"):
     raise RuntimeError("GROQ_API_KEY is required to run the course generation agent.")
 
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
+    model="llama-3.1-8b-instant",
     temperature=0.3
 )
 
