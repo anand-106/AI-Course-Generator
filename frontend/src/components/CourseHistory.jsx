@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { History, Book, ChevronRight, Clock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-export default function CourseHistory({ onSelectCourse, getAuthHeaders, API_BASE }) {
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+
+export default function CourseHistory({ onSelectCourse }) {
+    const { getAuthHeaders, logout } = useAuth();
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -18,7 +22,8 @@ export default function CourseHistory({ onSelectCourse, getAuthHeaders, API_BASE
                 headers: headers,
             });
             if (res.status === 401) {
-                // Token might be invalid or expired
+                // Token expired/invalid
+                logout();
                 throw new Error("Unauthorized");
             }
             if (!res.ok) throw new Error("Failed to fetch history");

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, PlayCircle, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { BookOpen, PlayCircle, FileText, ChevronDown, ChevronUp, Layers } from "lucide-react";
+import Flashcards from "./Flashcards";
 
 // Lazy load mermaid to avoid SSR issues
 let mermaidInstance = null;
@@ -232,6 +233,17 @@ function ModuleCard({ title, data, index }) {
               </div>
             </div>
           )}
+
+          {/* Flashcards Section */}
+          {data.flashcards && data.flashcards.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <Layers className="w-6 h-6 text-violet-600" />
+                <h3 className="text-xl font-semibold text-gray-800">Flashcards</h3>
+              </div>
+              <Flashcards cards={data.flashcards} />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -263,11 +275,16 @@ export default function CourseRenderer({ course }) {
         </div>
       </div>
 
-      {/* Modules */}
-      <div className="space-y-6">
+      {/* Modules - Horizontal Layout */}
+      <div className="flex overflow-x-auto gap-6 pb-12 snap-x snap-mandatory px-4 -mx-4 scrollbar-hide">
         {moduleEntries.map(([title, data], i) => (
-          <ModuleCard key={title} title={title} data={data} index={i} />
+          <div key={title} className="snap-center flex-shrink-0 w-[85vw] md:w-[650px] lg:w-[800px]">
+            <ModuleCard title={title} data={data} index={i} />
+          </div>
         ))}
+
+        {/* Spacer for last item scrolling */}
+        <div className="w-4 shrink-0" />
       </div>
     </div>
   );

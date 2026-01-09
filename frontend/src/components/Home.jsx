@@ -103,8 +103,6 @@ export default function Home() {
       {/* Sidebar - Course History */}
       <CourseHistory
         onSelectCourse={handleSelectCourse}
-        getAuthHeaders={getAuthHeaders}
-        API_BASE={API_BASE}
       />
 
       {/* Main Content Area */}
