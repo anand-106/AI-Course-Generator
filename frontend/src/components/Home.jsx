@@ -67,6 +67,7 @@ export default function Home() {
                 modules: {} // Initialize with empty modules
               });
             } else if (event.type === "module") {
+              console.log("Module received:", event.data.module_title, "Quiz:", event.data.quiz);
               setCourse(prev => {
                 if (!prev) return prev;
                 return {

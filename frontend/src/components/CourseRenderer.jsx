@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { BookOpen, PlayCircle, FileText, ChevronDown, ChevronUp, Layers } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { BookOpen, PlayCircle, FileText, ChevronDown, ChevronUp, Layers, HelpCircle } from "lucide-react";
 import Flashcards from "./Flashcards";
+import Quiz from "./Quiz";
 
 // Lazy load mermaid to avoid SSR issues
 let mermaidInstance = null;
@@ -153,6 +154,12 @@ function ExplanationContent({ content }) {
 function ModuleCard({ title, data, index }) {
   const [isExpanded, setIsExpanded] = useState(true);
 
+  // Debug: Log module data to check for quiz
+  useEffect(() => {
+    console.log(`Module "${title}" data:`, data);
+    console.log(`Module "${title}" quiz:`, data?.quiz);
+  }, [title, data]);
+
   return (
     <div
       className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-6 animate-slide-up"
@@ -242,6 +249,18 @@ function ModuleCard({ title, data, index }) {
                 <h3 className="text-xl font-semibold text-gray-800">Flashcards</h3>
               </div>
               <Flashcards cards={data.flashcards} />
+            </div>
+          )}
+
+          {/* Quiz Section */}
+          {data.quiz && Array.isArray(data.quiz) && data.quiz.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <HelpCircle className="w-6 h-6 text-amber-600" />
+                <h3 className="text-xl font-semibold text-gray-800">Module Quiz</h3>
+                <span className="text-sm text-gray-500">({data.quiz.length} questions)</span>
+              </div>
+              <Quiz questions={data.quiz} />
             </div>
           )}
         </div>

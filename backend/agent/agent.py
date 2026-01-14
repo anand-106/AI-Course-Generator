@@ -14,6 +14,7 @@ from agent.tools import (
     search_youtube_videos,
     generate_mermaid_for_topic,
     generate_flashcards_for_topic,
+    generate_quiz_for_topic,
 )
 
 # Load .env file before checking for API key
@@ -256,13 +257,15 @@ def node_generate_module(state: CourseState) -> CourseState:
     videos = search_youtube_videos(f"{current_topic} tutorial", limit=3)
     mermaid = generate_mermaid_for_topic(current_topic, list(explanations.keys()))
     flashcards = generate_flashcards_for_topic(current_topic, subtopics)
+    quiz = generate_quiz_for_topic(current_topic, subtopics, num_questions=6)
     
     module_data = {
         "module_title": current_topic,
         "explanations": explanations,    # Restore dictionary for frontend
         "videos": videos,                # Rename back to 'videos'
         "mermaid": mermaid,              # Rename back to 'mermaid'
-        "flashcards": flashcards         # New field
+        "flashcards": flashcards,        # New field
+        "quiz": quiz                     # Quiz per module
     }
     
     # Store in state
