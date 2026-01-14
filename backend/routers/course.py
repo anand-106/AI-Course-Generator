@@ -6,9 +6,9 @@ import json
 from datetime import datetime
 import uuid
 
-from app.agent.agent import run_workflow_stream
-from app.core.security import get_current_user
-from app.db import courses_collection
+from agent.agent import run_workflow_stream
+from core.security import get_current_user
+from db import courses_collection
 
 
 router = APIRouter(prefix="/course", tags=["Course"])

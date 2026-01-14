@@ -2,17 +2,23 @@ from typing import Dict, List, Any, AsyncIterator
 import os
 import json
 import re
+from pathlib import Path
+from dotenv import load_dotenv
 
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
-from app.agent.tools import (
+from agent.tools import (
     generate_explanations_for_topic,
     search_youtube_videos,
     generate_mermaid_for_topic,
     generate_flashcards_for_topic,
 )
+
+# Load .env file before checking for API key
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # -------------------------------------------------------------------
 # HARD REQUIREMENTS (AI-ONLY MODE)

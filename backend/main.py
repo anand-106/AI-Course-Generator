@@ -1,11 +1,3 @@
-import sys
-import os
-from pathlib import Path
-
-# Add backend directory to Python path
-backend_path = Path(__file__).parent.parent  # Go up one level from app/ to backend/
-sys.path.insert(0, str(backend_path))
-
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
@@ -13,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import traceback
 import logging
 
-from app.routers import auth
-from app.routers import course
+from routers import auth
+from routers import course
 
 load_dotenv()
 
@@ -46,7 +38,7 @@ def home():
 
 @app.get("/health")
 def health_check():
-    from app.db import users_collection, connection_error
+    from db import users_collection, connection_error
     return {
         "status": "ok" if users_collection is not None else "error",
         "database": "connected" if users_collection is not None else "disconnected",
@@ -68,4 +60,4 @@ app.add_middleware(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

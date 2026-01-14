@@ -2,9 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 from pydantic import BaseModel
-from app.models.user import User, RegisterResponse, Token
-from app.core.security import get_password_hash, verify_password, create_access_token
-from app.db import users_collection, connection_error
+from models.user import User, RegisterResponse, Token
+from core.security import get_password_hash, verify_password, create_access_token
+from db import users_collection, connection_error
 import uuid
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
