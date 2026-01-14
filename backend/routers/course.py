@@ -31,15 +31,36 @@ async def generate_course(
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
             # Yield initial status
-            yield json.dumps({"type": "status", "message": "Enhancing prompt..."}) + "\n"
+            yield json.dumps({"type": "status", "message": "Validating prompt..."}) + "\n"
             
             sent_topics = set()
+            validation_processed = False
             
             async for chunk in run_workflow_stream(req.prompt):
                 # chunk is like {"node_name": {state_updates}}
+                logger.debug(f"Received chunk: {list(chunk.keys())}")
                 for node_name, updates in chunk.items():
                     
-                    if node_name == "enhance_prompt":
+                    # Handle validation node
+                    if node_name == "validate_prompt":
+                        validation_processed = True
+                        logger.info(f"Validation node update: {updates}")
+                        is_valid = updates.get("is_valid", True)
+                        if not is_valid:
+                            validation_error = updates.get("validation_error", 
+                                "This prompt is not suitable for course generation. Please provide a topic, subject, or skill that can be taught. Examples: 'Python programming', 'Machine Learning basics', 'Web development'.")
+                            logger.info(f"Sending validation error: {validation_error}")
+                            yield json.dumps({
+                                "type": "error",
+                                "message": validation_error,
+                                "code": "INVALID_PROMPT"
+                            }) + "\n"
+                            return  # Stop streaming if validation fails
+                        # If valid, continue to next step
+                        logger.info("Validation passed, continuing...")
+                        yield json.dumps({"type": "status", "message": "Prompt validated. Enhancing prompt..."}) + "\n"
+                    
+                    elif node_name == "enhance_prompt":
                         title = updates.get("enhanced_prompt", "")
                         yield json.dumps({
                             "type": "status", 
@@ -92,6 +113,15 @@ async def generate_course(
             import traceback
             logger.error(traceback.format_exc())
             yield json.dumps({"type": "error", "message": str(exc)}) + "\n"
+        finally:
+            # Ensure we always send something if validation wasn't processed
+            if not validation_processed:
+                logger.warning("Validation node was not processed, sending timeout error")
+                yield json.dumps({
+                    "type": "error",
+                    "message": "Validation timed out. Please try again with a valid course topic.",
+                    "code": "VALIDATION_TIMEOUT"
+                }) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 

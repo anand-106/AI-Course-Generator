@@ -81,13 +81,23 @@ export default function Home() {
               setCourse(event.data); // Ensure consistency
               setLoading(false);
             } else if (event.type === "error") {
-              if (event.message.includes("429")) {
-                throw new Error("High traffic (Rate Limit). Please try again in 2 minutes.");
-              }
-              throw new Error(event.message);
+              // Set error state and stop loading
+              const errorMessage = event.message || "An error occurred during course generation";
+              console.log("Error received from stream:", errorMessage);
+              setError(errorMessage);
+              setLoading(false);
+              setGenerationStatus("");
+              // Break out of the stream loop
+              return;
             }
           } catch (parseError) {
-            console.error("Error parsing stream line:", line, parseError);
+            // Only catch JSON parsing errors, not application errors
+            if (parseError instanceof SyntaxError) {
+              console.error("Error parsing stream line:", line, parseError);
+            } else {
+              // Re-throw application errors
+              throw parseError;
+            }
           }
         }
       }

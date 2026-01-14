@@ -45,6 +45,9 @@ class CourseState(dict):
     generated_modules: Dict[str, Any]
     # Final output
     course: Dict[str, Any]
+    # Validation
+    is_valid: bool = True
+    validation_error: str = None
 
 
 def extract_json_list(text: str) -> List[str]:
@@ -67,6 +70,88 @@ def extract_json_list(text: str) -> List[str]:
         # Log the failed content for debugging
         print(f"FAILED TO PARSE JSON. RAW CONTENT:\n{text}")
         raise e
+
+
+# -------------------------------------------------------------------
+# NODE 0: Validate Prompt
+# -------------------------------------------------------------------
+
+def node_validate_prompt(state: CourseState) -> CourseState:
+    """
+    Validate if the prompt is related to course generation or educational content.
+    Returns state with is_valid=False and validation_error if not valid.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are a prompt validator for an educational course generation system.
+Your task is to determine if a user's prompt is suitable for generating an educational course.
+
+A valid prompt should be:
+- Related to learning, education, or skill development
+- About a subject, topic, skill, or field that can be taught
+- Suitable for creating structured learning content
+
+Invalid prompts include:
+- Personal questions or conversations
+- Requests for general information or facts
+- Non-educational topics (weather, jokes, etc.)
+- Random text or gibberish
+- Requests that don't involve learning or teaching
+
+Respond with ONLY a JSON object in this exact format:
+{{"is_valid": true/false, "reason": "brief explanation"}}
+
+If valid, set is_valid to true. If invalid, set is_valid to false and provide a clear reason."""),
+            ("human", "Validate this prompt for course generation: {prompt}")
+        ])
+        
+        chain = prompt | llm
+        logger.info(f"Validating prompt: {state['prompt'][:50]}...")
+        resp = chain.invoke({"prompt": state["prompt"]})
+        logger.info(f"Validation response received: {resp.content[:100]}...")
+        
+        # Extract JSON from response
+        response_text = resp.content.strip()
+        # Remove markdown code blocks if present
+        response_text = re.sub(r"```(?:json)?\s*", "", response_text)
+        response_text = re.sub(r"```\s*", "", response_text)
+        response_text = response_text.strip()
+        
+        # Try to find JSON object
+        start = response_text.find('{')
+        end = response_text.rfind('}') + 1
+        if start != -1 and end > start:
+            response_text = response_text[start:end]
+        
+        validation_result = json.loads(response_text)
+        logger.info(f"Parsed validation result: {validation_result}")
+        
+        state["is_valid"] = validation_result.get("is_valid", True)
+        if not state["is_valid"]:
+            reason = validation_result.get("reason", "This prompt is not suitable for course generation.")
+            # Create a user-friendly error message
+            error_msg = f"{reason}\n\nPlease provide a topic, subject, or skill that can be taught. Examples: 'Python programming', 'Machine Learning basics', 'Web development', 'Data structures and algorithms'."
+            state["validation_error"] = error_msg
+            logger.info(f"Validation failed: {error_msg}")
+        else:
+            logger.info("Validation passed")
+            
+    except (json.JSONDecodeError, KeyError) as e:
+        # If we can't parse the validation, default to valid (fail open)
+        logger.warning(f"Could not parse validation response: {e}")
+        logger.warning(f"Response was: {resp.content if 'resp' in locals() else 'No response'}")
+        state["is_valid"] = True
+    except Exception as e:
+        logger.error(f"Error during validation: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        # On error, default to valid to not block users
+        state["is_valid"] = True
+    
+    return state
 
 
 # -------------------------------------------------------------------
@@ -219,12 +304,29 @@ def should_continue(state: CourseState) -> str:
 def build_graph():
     graph = StateGraph(CourseState)
 
+    graph.add_node("validate_prompt", node_validate_prompt)
     graph.add_node("enhance_prompt", node_enhance_prompt)
     graph.add_node("generate_topics", node_generate_topics)
     graph.add_node("generate_module", node_generate_module)
     graph.add_node("finalize_course", node_finalize_course)
 
-    graph.set_entry_point("enhance_prompt")
+    graph.set_entry_point("validate_prompt")
+    
+    # Conditional edge: if validation fails, go to END, otherwise continue
+    def should_continue_after_validation(state: CourseState) -> str:
+        if not state.get("is_valid", True):
+            return "end"
+        return "enhance_prompt"
+    
+    graph.add_conditional_edges(
+        "validate_prompt",
+        should_continue_after_validation,
+        {
+            "end": END,
+            "enhance_prompt": "enhance_prompt"
+        }
+    )
+    
     graph.add_edge("enhance_prompt", "generate_topics")
     graph.add_edge("generate_topics", "generate_module")
     
@@ -247,7 +349,11 @@ def build_graph():
 
 async def run_workflow_stream(user_prompt: str) -> AsyncIterator[Dict[str, Any]]:
     workflow = build_graph()
-    initial_state = {"prompt": user_prompt}
+    initial_state = {
+        "prompt": user_prompt,
+        "is_valid": True,
+        "validation_error": None
+    }
     
     # We'll stream the updates from the graph
     # stream_mode="updates" yields only the updates returned by the nodes
