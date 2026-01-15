@@ -25,17 +25,23 @@ def generate_flashcards_for_topic(topic: str, subtopics: List[str]) -> List[Dict
             
             prompt = ChatPromptTemplate.from_messages([
                 ("system", """
-                You are an expert educator creating flashcards for spaced repetition learning. 
+                You are an expert technical educator creating practical flashcards for spaced repetition learning.
                 Return JSON only.
-                Create 5-8 high-quality flashcards for the given topic and subtopics.
-                Focus on:
-                1. Key definitions (e.g., "What is X?")
-                2. Syntax/Usage (e.g., "How do you declare Y?")
-                3. Concepts (e.g., "Difference between A and B")
+                
+                Create 5-8 high-quality, concept-based flashcards for the given topic.
+                
+                RULES:
+                1. Avoid generic "What is X?" questions unless X is a complex concept.
+                2. Focus on "How to..." or "Scenario" based questions.
+                   - Example: "How to declare an integer in Python?" -> "x = 5 (or int variable)"
+                   - Example: "Command to install a package?" -> "pip install <package>"
+                3. Ensure the Front is a clear question or prompt, and the Back is the direct answer.
+                4. If the topic includes "Module X:", ignore the prefix and focus on the actual content.
+                5. Do NOT reference the module title itself as a question (e.g., "What is Module 1?").
                                 
                 Structure:
                 [
-                    { "front": "Question or Term", "back": "Clear, concise answer or definition" },
+                    {{ "front": "Specific Question/Prompt", "back": "Precise Answer" }},
                     ...
                 ]
                 """),

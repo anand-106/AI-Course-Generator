@@ -68,7 +68,6 @@ def extract_json_list(text: str) -> List[str]:
     try:
         return json.loads(text)
     except json.JSONDecodeError as e:
-        # Log the failed content for debugging
         print(f"FAILED TO PARSE JSON. RAW CONTENT:\n{text}")
         raise e
 
