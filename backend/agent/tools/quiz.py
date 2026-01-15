@@ -42,7 +42,7 @@ def _extract_json_array(text: str) -> Optional[List[Dict[str, Any]]]:
 
 def _clean_topic_name(topic: str) -> str:
     """Remove module prefixes like 'Module 1:' or 'Module X:' to get the actual subject."""
-    # Remove patterns like "Module 1:", "Module X:", "Module 2: ", etc.
+    
     cleaned = re.sub(r"^Module\s+\d+:\s*", "", topic, flags=re.IGNORECASE)
     cleaned = re.sub(r"^Module\s+[A-Z]+:\s*", "", cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.strip()
@@ -89,7 +89,7 @@ def generate_quiz_for_topic(topic: str, subtopics: List[str], num_questions: int
 
     if ChatGroq and ChatPromptTemplate and os.getenv("GROQ_API_KEY"):
         try:
-            llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.2)
+            llm = ChatGroq(model="groq/compound", temperature=0.2)
 
             prompt = ChatPromptTemplate.from_messages([
                 ("system", """

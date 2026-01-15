@@ -151,13 +151,16 @@ function ExplanationContent({ content }) {
   return null;
 }
 
-function ModuleCard({ title, data, index }) {
+// ... imports ...
+
+// ... (MermaidBlock, YouTubeEmbed, ExplanationContent components unchanged) ...
+
+function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext }) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   // Debug: Log module data to check for quiz
   useEffect(() => {
-    console.log(`Module "${title}" data:`, data);
-    console.log(`Module "${title}" quiz:`, data?.quiz);
+    // console.log(`Module "${title}" data:`, data);
   }, [title, data]);
 
   return (
@@ -186,6 +189,8 @@ function ModuleCard({ title, data, index }) {
       {/* Module Content */}
       {isExpanded && (
         <div className="p-8 space-y-8 animate-fade-in">
+          {/* ... (Explanations, Diagram, Videos, Flashcards sections unchanged) ... */}
+
           {/* Explanations Section */}
           {data.explanations && Object.keys(data.explanations).length > 0 && (
             <div className="space-y-4">
@@ -260,7 +265,16 @@ function ModuleCard({ title, data, index }) {
                 <h3 className="text-xl font-semibold text-slate-200">Module Quiz</h3>
                 <span className="text-sm text-slate-400">({data.quiz.length} questions)</span>
               </div>
-              <Quiz questions={data.quiz} />
+              <Quiz
+                questions={data.quiz}
+                onComplete={(score) => onQuizComplete(index, score)}
+              />
+              {isGeneratingNext && (
+                <div className="mt-4 p-4 bg-blue-900/20 text-blue-200 rounded-xl border border-blue-500/30 flex items-center gap-3 animate-pulse">
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  <span>Generating next module... please wait...</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -270,10 +284,63 @@ function ModuleCard({ title, data, index }) {
 }
 
 export default function CourseRenderer({ course }) {
-  if (!course) return null;
+  const [localCourse, setLocalCourse] = useState(course);
+  const [generatingNext, setGeneratingNext] = useState(false);
+  const [completedModules, setCompletedModules] = useState({});
 
-  const modules = course.modules || {};
+  useEffect(() => {
+    setLocalCourse(course);
+  }, [course]);
+
+  if (!localCourse) return null;
+
+  const modules = localCourse.modules || {};
   const moduleEntries = Object.entries(modules);
+  const courseId = localCourse.course_id;
+
+  const handleQuizComplete = async (moduleIndex, score) => {
+    // Only proceed if score > 50% or some threshold if desired
+    // For now, just generate next module on completion
+
+    // Prevent multiple calls for same module attempt
+    if (completedModules[moduleIndex]) return;
+
+    // Mark this module as completed locally to avoid re-triggering
+    setCompletedModules(prev => ({ ...prev, [moduleIndex]: true }));
+
+    // If this is the last visible module, fetch the next one
+    if (moduleIndex === moduleEntries.length - 1 && courseId) {
+      setGeneratingNext(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(`http://localhost:8000/course/${courseId}/generate_next_module`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (!result.completed && result.module) {
+            // Append new module to local state
+            setLocalCourse(prev => {
+              const newModules = { ...prev.modules, [result.module.module_title]: result.module };
+              return { ...prev, modules: newModules };
+            });
+          } else if (result.completed) {
+            console.log("Course fully generated!");
+          }
+        } else {
+          console.error("Failed to generate next module");
+        }
+      } catch (error) {
+        console.error("Error asking for next module:", error);
+      } finally {
+        setGeneratingNext(false);
+      }
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -285,7 +352,7 @@ export default function CourseRenderer({ course }) {
           </div>
           <div>
             <h1 className="text-4xl font-bold mb-2">Generated Course</h1>
-            <p className="text-purple-100 text-lg">{course.title || "Your Custom Course"}</p>
+            <p className="text-purple-100 text-lg">{localCourse.title || "Your Custom Course"}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 text-purple-100">
@@ -298,7 +365,13 @@ export default function CourseRenderer({ course }) {
       <div className="flex overflow-x-auto gap-6 pb-12 snap-x snap-mandatory px-4 -mx-4 scrollbar-hide">
         {moduleEntries.map(([title, data], i) => (
           <div key={title} className="snap-center flex-shrink-0 w-[85vw] md:w-[650px] lg:w-[800px]">
-            <ModuleCard title={title} data={data} index={i} />
+            <ModuleCard
+              title={title}
+              data={data}
+              index={i}
+              onQuizComplete={handleQuizComplete}
+              isGeneratingNext={generatingNext && i === moduleEntries.length - 1}
+            />
           </div>
         ))}
 

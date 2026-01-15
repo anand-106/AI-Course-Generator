@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 
-export default function Quiz({ questions }) {
+export default function Quiz({ questions, onComplete }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedAnswers, setSelectedAnswers] = useState({});
     const [showResults, setShowResults] = useState({});
@@ -59,6 +59,9 @@ export default function Quiz({ questions }) {
     const handleSubmitQuiz = () => {
         const result = calculateScore();
         setScore(result);
+        if (onComplete) {
+            onComplete(result);
+        }
     };
 
     const allAnswered = Object.keys(selectedAnswers).length === questions.length;
@@ -136,10 +139,10 @@ export default function Quiz({ questions }) {
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold border ${showAnswer && isCorrectAnswer
-                                                ? 'bg-green-500/20 border-green-500 text-green-300'
-                                                : isSelected
-                                                    ? 'bg-violet-600 text-white border-violet-500'
-                                                    : 'bg-slate-700/50 text-slate-400 border-white/10'
+                                            ? 'bg-green-500/20 border-green-500 text-green-300'
+                                            : isSelected
+                                                ? 'bg-violet-600 text-white border-violet-500'
+                                                : 'bg-slate-700/50 text-slate-400 border-white/10'
                                             }`}>
                                             {String.fromCharCode(65 + idx)}
                                         </div>
@@ -159,8 +162,8 @@ export default function Quiz({ questions }) {
                     {/* Explanation */}
                     {showExplanation && currentQuestion.explanation && (
                         <div className={`mt-4 p-4 rounded-xl border-l-4 ${isCorrect
-                                ? 'bg-green-900/20 border-green-500'
-                                : 'bg-blue-900/20 border-blue-500'
+                            ? 'bg-green-900/20 border-green-500'
+                            : 'bg-blue-900/20 border-blue-500'
                             } animate-fade-in`}>
                             <p className="text-sm font-semibold text-slate-300 mb-1">Explanation:</p>
                             <p className="text-slate-400 leading-relaxed">{currentQuestion.explanation}</p>

@@ -21,7 +21,7 @@ AI-Course-Generator-MAIN/
 - **Python 3.8+** (for backend)
 - **Node.js 16+** and **npm** (for frontend)
 - **MongoDB Atlas account** (or local MongoDB instance)
-- **Google API Key** (for Gemini AI - optional but recommended)
+- **OpenAI API Key** (for OpenAI GPT - optional but recommended)
 
 ## Setup Instructions
 
@@ -34,8 +34,8 @@ Create a `.env` file in the **project root** directory with the following variab
 MONGODB_URI=your_mongodb_connection_string
 DATABASE_NAME=your_database_name
 
-# Google AI (Optional - for course generation features)
-GOOGLE_API_KEY=your_google_api_key
+# OpenAI GPT (Optional - for course generation features)
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 **Example MongoDB Atlas URI:**
@@ -179,7 +179,7 @@ npm run preview  # Preview production build
 
 ## Technologies Used
 
-- **Backend**: FastAPI, MongoDB, LangChain, LangGraph, Google Generative AI
+- **Backend**: FastAPI, MongoDB, LangChain, LangGraph, OpenAI GPT
 - **Frontend**: React, Vite, Tailwind CSS, Mermaid.js
 - **Database**: MongoDB Atlas
 
@@ -187,4 +187,4 @@ npm run preview  # Preview production build
 
 - The `.env` file should be in the **project root** (not in backend or frontend folders)
 - Make sure both servers are running simultaneously for the app to work
-- Google API Key is optional but required for AI-powered course generation features
+- OpenAI API Key is optional but required for AI-powered course generation features

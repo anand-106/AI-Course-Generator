@@ -19,7 +19,7 @@ def generate_flashcards_for_topic(topic: str, subtopics: List[str]) -> List[Dict
     if ChatGroq and ChatPromptTemplate and os.getenv("GROQ_API_KEY"):
         try:
             llm = ChatGroq(
-                model="llama-3.3-70b-versatile",
+                model="groq/compound",
                 temperature=0.3
             )
             

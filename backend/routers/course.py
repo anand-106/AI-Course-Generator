@@ -36,7 +36,8 @@ async def generate_course(
             sent_topics = set()
             validation_processed = False
             
-            async for chunk in run_workflow_stream(req.prompt):
+            # Use single_step=True to generate only the first module initially
+            async for chunk in run_workflow_stream(req.prompt, single_step=True):
                 # chunk is like {"node_name": {state_updates}}
                 logger.debug(f"Received chunk: {list(chunk.keys())}")
                 for node_name, updates in chunk.items():
@@ -88,7 +89,7 @@ async def generate_course(
                                 
                     elif node_name == "finalize_course":
                         full_course = updates.get("course", {})
-                        # Save to DB
+                        # Save to DB - Include pending_topics from state (updates["course"] should have it now)
                         if courses_collection is not None:
                             try:
                                 courses_collection.insert_one({
@@ -96,7 +97,7 @@ async def generate_course(
                                     "user_id": current_user,
                                     "prompt": req.prompt,
                                     "title": full_course.get("title", "Untitled Course"),
-                                    "course_data": full_course,
+                                    "course_data": full_course, # This now includes 'pending_topics'
                                     "created_at": datetime.utcnow()
                                 })
                                 logger.info(f"Course {course_id} saved to DB")
@@ -105,7 +106,8 @@ async def generate_course(
 
                         yield json.dumps({
                             "type": "complete",
-                            "data": full_course
+                            "data": full_course,
+                            "course_id": course_id # Send ID back so frontend can request next modules
                         }) + "\n"
                         
         except Exception as exc:
@@ -124,6 +126,54 @@ async def generate_course(
                 }) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
+
+
+@router.post("/{course_id}/generate_next_module")
+async def generate_next_module(course_id: str, current_user: str = Depends(get_current_user)):
+    """Generates the next available module for a given course."""
+    if courses_collection is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    course_doc = courses_collection.find_one({"course_id": course_id, "user_id": current_user})
+    if not course_doc:
+        raise HTTPException(status_code=404, detail="Course not found")
+        
+    course_data = course_doc.get("course_data", {})
+    pending_topics = course_data.get("pending_topics", [])
+    
+    if not pending_topics:
+        return {"message": "All modules have already been generated.", "completed": True}
+        
+    # Get next topic
+    next_topic = pending_topics.pop(0)
+    
+    try:
+        from agent.agent import generate_module_content
+        # Generate content using the extracted logic
+        module_content = generate_module_content(next_topic)
+        
+        # Update course data
+        if "modules" not in course_data:
+            course_data["modules"] = {}
+            
+        course_data["modules"][next_topic] = module_content
+        course_data["pending_topics"] = pending_topics
+        
+        # Save back to DB
+        courses_collection.update_one(
+            {"course_id": course_id},
+            {"$set": {"course_data": course_data}}
+        )
+        
+        return {
+            "module": module_content,
+            "remaining_topics": len(pending_topics),
+            "completed": False
+        }
+        
+    except Exception as e:
+        print(f"Error generating next module: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate module: {str(e)}")
 
 
 @router.get("/list")

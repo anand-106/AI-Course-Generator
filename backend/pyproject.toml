@@ -19,5 +19,4 @@ dependencies = [
     "langchain-openai",
     "openai",
     "youtube-search-python",
-    "langchain-groq",
 ]

@@ -29,7 +29,7 @@ if not os.getenv("GROQ_API_KEY"):
     raise RuntimeError("GROQ_API_KEY is required to run the course generation agent.")
 
 llm = ChatGroq(
-    model="llama-3.1-8b-instant",
+    model="groq/compound",
     temperature=0.3
 )
 
@@ -49,6 +49,8 @@ class CourseState(dict):
     # Validation
     is_valid: bool = True
     validation_error: str = None
+    # Control flags
+    single_step: bool = False
 
 
 def extract_json_list(text: str) -> List[str]:
@@ -239,6 +241,24 @@ def generate_subtopics(topic: str) -> List[str]:
 
     return subtopics
 
+def generate_module_content(topic: str) -> Dict[str, Any]:
+    """Generates all content for a single module."""
+    subtopics = generate_subtopics(topic)
+    explanations = generate_explanations_for_topic(topic, subtopics)
+    videos = search_youtube_videos(f"{topic} tutorial", limit=3)
+    mermaid = generate_mermaid_for_topic(topic, list(explanations.keys()))
+    flashcards = generate_flashcards_for_topic(topic, subtopics)
+    quiz = generate_quiz_for_topic(topic, subtopics, num_questions=6)
+    
+    return {
+        "module_title": topic,
+        "explanations": explanations,
+        "videos": videos,
+        "mermaid": mermaid,
+        "flashcards": flashcards,
+        "quiz": quiz
+    }
+
 # -------------------------------------------------------------------
 # NODE 3: Generate Module Content (Iterative)
 # -------------------------------------------------------------------
@@ -250,22 +270,8 @@ def node_generate_module(state: CourseState) -> CourseState:
     
     current_topic = state["pending_topics"].pop(0)
     
-    
-    subtopics = generate_subtopics(current_topic)
-    explanations = generate_explanations_for_topic(current_topic, subtopics)
-    videos = search_youtube_videos(f"{current_topic} tutorial", limit=3)
-    mermaid = generate_mermaid_for_topic(current_topic, list(explanations.keys()))
-    flashcards = generate_flashcards_for_topic(current_topic, subtopics)
-    quiz = generate_quiz_for_topic(current_topic, subtopics, num_questions=6)
-    
-    module_data = {
-        "module_title": current_topic,
-        "explanations": explanations,    # Restore dictionary for frontend
-        "videos": videos,                # Rename back to 'videos'
-        "mermaid": mermaid,              # Rename back to 'mermaid'
-        "flashcards": flashcards,        # New field
-        "quiz": quiz                     # Quiz per module
-    }
+    # Use extracted function
+    module_data = generate_module_content(current_topic)
     
     # Store in state
     state["generated_modules"][current_topic] = module_data
@@ -278,13 +284,19 @@ def node_generate_module(state: CourseState) -> CourseState:
 
 def node_finalize_course(state: CourseState) -> CourseState:
     ordered_modules = {}
+    
+    # Check if we have generated modules, if not, we can't really order them 
+    # but strictly speaking we only include what is generated.
+    
     for topic in state["topics"]:
         if topic in state["generated_modules"]:
             ordered_modules[topic] = state["generated_modules"][topic]
 
     state["course"] = {
         "title": state["enhanced_prompt"],
-        "modules": ordered_modules
+        "modules": ordered_modules,
+        "topics": state["topics"],           # Full list of topics planned
+        "pending_topics": state["pending_topics"] # Topics yet to be generated
     }
     return state
 
@@ -294,6 +306,10 @@ def node_finalize_course(state: CourseState) -> CourseState:
 # -------------------------------------------------------------------
 
 def should_continue(state: CourseState) -> str:
+    # If single_step mode is on, we stop after one module (which just finished)
+    if state.get("single_step", False):
+        return "finalize_course"
+
     if state["pending_topics"]:
         return "generate_module"
     return "finalize_course"
@@ -349,12 +365,13 @@ def build_graph():
 # PUBLIC API (Streaming)
 # -------------------------------------------------------------------
 
-async def run_workflow_stream(user_prompt: str) -> AsyncIterator[Dict[str, Any]]:
+async def run_workflow_stream(user_prompt: str, single_step: bool = False) -> AsyncIterator[Dict[str, Any]]:
     workflow = build_graph()
     initial_state = {
         "prompt": user_prompt,
         "is_valid": True,
-        "validation_error": None
+        "validation_error": None,
+        "single_step": single_step
     }
     
     # We'll stream the updates from the graph
