@@ -26,18 +26,35 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[st
             
             prompt = ChatPromptTemplate.from_messages([
                 ("system", """
-                You are an expert instructor. return JSON only.
-                For each subtopic, write a DETAILED, COMPREHENSIVE explanation (150-250 words).
-                Include:
-                1. Core Concept: Clear definition.
-                2. Real-world Context: Why it matters.
-                3. Key Details: How it works.
-                4. Example/Analogy: To clarify the concept.
+                You are an expert technical instructor. 
+                
+                TASK:
+                For each subtopic provided, write a DEEP, TECHNICAL, and COMPREHENSIVE explanation.
+                
+                REQUIREMENTS:
+                1. Length: 200-300 words per subtopic.
+                2. Content: 
+                   - Start with a clear, technical definition.
+                   - Explain the "Why" and "How" in detail.
+                   - Include code snippets or syntax examples where applicable (use markdown for code).
+                   - Provide a real-world use case.
+                3. Format: Return ONLY a valid JSON object.
+                
+                JSON STRUCTURE:
+                {{
+                    "Subtopic Name 1": "Full explanation text...",
+                    "Subtopic Name 2": "Full explanation text..."
+                }}
+                
+                IMPORTANT:
+                - Output raw JSON only. Do not wrap in markdown code blocks.
+                - Escape all double quotes within the text.
+                - Ensure the JSON is valid.
                 """),
                 ("human", (
                     "Topic: '{topic}'\n"
                     "Subtopics: {subtopics}\n\n"
-                    "Return strictly a JSON object object mapping subtopic_name -> detailed_explanation_string."
+                    "Return strictly a JSON object mapping subtopic_name -> detailed_explanation_string."
                 )),
             ])
             
@@ -45,10 +62,14 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[st
             resp = chain.invoke({"topic": topic, "subtopics": ", ".join(subtopics)})
             
             content = resp.content if hasattr(resp, "content") else str(resp)
+            # Clean up markdown code blocks if present
+            content = re.sub(r"```(json)?", "", content).strip()
             
             # JSON clean-up logic
             try:
-                return json.loads(content)
+                data = json.loads(content)
+                if isinstance(data, dict):
+                    return data
             except Exception:
                 # regex fallback to find the JSON object
                 m = re.search(r"\{[\s\S]*\}", content)
@@ -57,6 +78,7 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[st
                         return json.loads(m.group(0))
                     except Exception:
                         pass
+                print(f"FAILED TO PARSE EXPLANATION JSON. Raw: {content[:100]}...")
         except Exception as e:
             print(f"Error generating explanations: {e}")
             pass
