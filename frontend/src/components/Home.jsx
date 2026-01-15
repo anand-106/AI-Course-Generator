@@ -79,7 +79,8 @@ export default function Home() {
                 };
               });
             } else if (event.type === "complete") {
-              setCourse(event.data); // Ensure consistency
+              // Merge course_id into the course data
+              setCourse({ ...event.data, course_id: event.course_id });
               setLoading(false);
             } else if (event.type === "error") {
               // Set error state and stop loading
