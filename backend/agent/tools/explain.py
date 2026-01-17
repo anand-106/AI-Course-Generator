@@ -4,10 +4,10 @@ import json
 import re
 
 try:
-    from langchain_groq import ChatGroq
+    from langchain_ollama import ChatOllama
     from langchain_core.prompts import ChatPromptTemplate
 except Exception:
-    ChatGroq = None
+    ChatOllama = None
     ChatPromptTemplate = None
 
 
@@ -16,11 +16,11 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[st
     Generate detailed, structured explanations for a topic and its subtopics.
     """
     
-    # Check if Groq is available and configured
-    if ChatGroq and ChatPromptTemplate and os.getenv("GROQ_API_KEY"):
+    # Check if Ollama is available
+    if ChatOllama and ChatPromptTemplate:
         try:
-            llm = ChatGroq(
-                model="groq/compound",
+            llm = ChatOllama(
+                model="llama3.1",
                 temperature=0.3
             )
             
@@ -36,20 +36,21 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[st
                 2. Content: 
                    - Start with a clear, technical definition.
                    - Explain the "Why" and "How" in detail.
-                   - Include code snippets or syntax examples where applicable (use markdown for code).
+                   - Include code snippets or syntax examples where applicable.
                    - Provide a real-world use case.
                 3. Format: Return ONLY a valid JSON object.
                 
                 JSON STRUCTURE:
                 {{
-                    "Subtopic Name 1": "Full explanation text...",
+                    "Subtopic Name 1": "Full explanation text with escaped chars...",
                     "Subtopic Name 2": "Full explanation text..."
                 }}
                 
-                IMPORTANT:
-                - Output raw JSON only. Do not wrap in markdown code blocks.
-                - Escape all double quotes within the text.
-                - Ensure the JSON is valid.
+                IMPORTANT JSON RULES:
+                - Output raw JSON.
+                - ESCAPE ALL DOUBLE QUOTES inside the explanation strings (e.g., use \\" instead of ").
+                - Do NOT use markdown formatting for the outer block (no ```json wrapper).
+                - Newlines in the text must be escaped as \\n.
                 """),
                 ("human", (
                     "Topic: '{topic}'\n"
@@ -62,23 +63,41 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[st
             resp = chain.invoke({"topic": topic, "subtopics": ", ".join(subtopics)})
             
             content = resp.content if hasattr(resp, "content") else str(resp)
-            # Clean up markdown code blocks if present
-            content = re.sub(r"```(json)?", "", content).strip()
+            content = content.strip()
             
+            # Robust cleanup: Only remove START/END blocks, preserving internal backticks
+            if content.startswith("```json"): 
+                content = content[7:]
+            elif content.startswith("```"): 
+                content = content[3:]
+            
+            if content.endswith("```"): 
+                content = content[:-3]
+            
+            content = content.strip()
+            
+            # Attempt to fix invalid escape sequences (like \s, \c, or windows paths)
+            # Regex matches backslashes not followed by valid JSON escape chars
+            content = re.sub(r'\\(?![\\/bfnrt"]|u[0-9a-fA-F]{4})', r'\\\\', content)
+
             # JSON clean-up logic
             try:
-                data = json.loads(content)
+                # strict=False allows control characters (like newlines) inside strings
+                data = json.loads(content, strict=False)
                 if isinstance(data, dict):
                     return data
-            except Exception:
-                # regex fallback to find the JSON object
-                m = re.search(r"\{[\s\S]*\}", content)
+            except json.JSONDecodeError as e:
+                # Try a specialized fallback for simple trailing comma or unescaped quote issues if possible
+                # For now, just try to extract the main object if there's garbage around it
+                m = re.search(r"\{.*\}", content, re.DOTALL)
                 if m:
                     try:
-                        return json.loads(m.group(0))
-                    except Exception:
+                        return json.loads(m.group(0), strict=False)
+                    except:
                         pass
-                print(f"FAILED TO PARSE EXPLANATION JSON. Raw: {content[:100]}...")
+                        
+                print(f"FAILED TO PARSE EXPLANATION JSON. Error: {e}")
+                print(f"Raw Content Start: {content[:200]}...")
         except Exception as e:
             print(f"Error generating explanations: {e}")
             pass
@@ -87,9 +106,8 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[st
     return {
         st: (
             f"**{st}** is a fundamental concept in {topic}. \n\n"
-            "In this module, we explore its core principles and applications. "
-            "Understanding this is crucial for mastering the broader subject. "
-            "We will delve into practical examples and best practices to ensure deep comprehension."
+            "Understanding this is crucial for the broader subject. "
+            "(Note: Detailed AI explanation could not be generated due to local model parsing error. Please check backend logs.)"
         ) for st in subtopics
     }
 

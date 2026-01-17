@@ -6,7 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from langgraph.graph import StateGraph, END
-from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 
 from agent.tools import (
@@ -17,19 +17,17 @@ from agent.tools import (
     generate_quiz_for_topic,
 )
 
-# Load .env file before checking for API key
+# Load .env file (kept for other potential env vars, but Groq key not needed)
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # -------------------------------------------------------------------
-# HARD REQUIREMENTS (AI-ONLY MODE)
+# LLM SETUP (OLLAMA LOCAL)
 # -------------------------------------------------------------------
 
-if not os.getenv("GROQ_API_KEY"):
-    raise RuntimeError("GROQ_API_KEY is required to run the course generation agent.")
-
-llm = ChatGroq(
-    model="groq/compound",
+# Using local Llama 3.1 model via Ollama
+llm = ChatOllama(
+    model="llama3.1",
     temperature=0.3
 )
 
@@ -68,7 +66,7 @@ def extract_json_list(text: str) -> List[str]:
             text = text[start:end+1]
     
     try:
-        return json.loads(text)
+        return json.loads(text, strict=False)
     except json.JSONDecodeError as e:
         print(f"FAILED TO PARSE JSON. RAW CONTENT:\n{text}")
         raise e

@@ -4,10 +4,10 @@ import json
 import re
 
 try:
-    from langchain_groq import ChatGroq
+    from langchain_ollama import ChatOllama
     from langchain_core.prompts import ChatPromptTemplate
 except Exception:
-    ChatGroq = None
+    ChatOllama = None
     ChatPromptTemplate = None
 
 def generate_flashcards_for_topic(topic: str, subtopics: List[str]) -> List[Dict[str, str]]:
@@ -16,10 +16,10 @@ def generate_flashcards_for_topic(topic: str, subtopics: List[str]) -> List[Dict
     Returns: [{"front": "Term/Question", "back": "Definition/Answer"}]
     """
     
-    if ChatGroq and ChatPromptTemplate and os.getenv("GROQ_API_KEY"):
+    if ChatOllama and ChatPromptTemplate:
         try:
-            llm = ChatGroq(
-                model="groq/compound",
+            llm = ChatOllama(
+                model="llama3.1",
                 temperature=0.3
             )
             
@@ -57,8 +57,11 @@ def generate_flashcards_for_topic(topic: str, subtopics: List[str]) -> List[Dict
             
             content = resp.content if hasattr(resp, "content") else str(resp)
             
+            # Attempt to fix invalid escape sequences
+            content = re.sub(r'\\(?![\\/bfnrt"]|u[0-9a-fA-F]{4})', r'\\\\', content)
+            
             try:
-                data = json.loads(content)
+                data = json.loads(content, strict=False)
                 if isinstance(data, list):
                     return data
                 if isinstance(data, dict) and "flashcards" in data:
@@ -68,7 +71,7 @@ def generate_flashcards_for_topic(topic: str, subtopics: List[str]) -> List[Dict
                 m = re.search(r"\[[\s\S]*\]", content)
                 if m:
                     try:
-                        return json.loads(m.group(0))
+                        return json.loads(m.group(0), strict=False)
                     except Exception:
                         pass
         except Exception as e:

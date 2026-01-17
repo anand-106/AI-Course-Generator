@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { BookOpen, PlayCircle, FileText, ChevronDown, ChevronUp, Layers, HelpCircle } from "lucide-react";
 import Flashcards from "./Flashcards";
 import Quiz from "./Quiz";
+import { useAuth } from "../context/AuthContext";
 
 // Lazy load mermaid to avoid SSR issues
 let mermaidInstance = null;
@@ -151,24 +152,16 @@ function ExplanationContent({ content }) {
   return null;
 }
 
-// ... imports ...
-
-// ... (MermaidBlock, YouTubeEmbed, ExplanationContent components unchanged) ...
-
-function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext }) {
+function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext, isLastModule }) {
   const [isExpanded, setIsExpanded] = useState(true);
-
-  // Debug: Log module data to check for quiz
-  useEffect(() => {
-    // console.log(`Module "${title}" data:`, data);
-  }, [title, data]);
+  const [quizCompleted, setQuizCompleted] = useState(false);
 
   return (
     <div
       className="glass-card rounded-3xl overflow-hidden mb-6 animate-slide-up"
       style={{ animationDelay: `${index * 100}ms` }}
     >
-      {/* Module Header */}
+      {/* ... Header ... */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-8 py-6 bg-gradient-to-r from-violet-600 to-indigo-600 text-white flex items-center justify-between group hover:from-violet-700 hover:to-indigo-700 transition-all duration-300"
@@ -189,64 +182,45 @@ function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext }) {
       {/* Module Content */}
       {isExpanded && (
         <div className="p-8 space-y-8 animate-fade-in">
-          {/* ... (Explanations, Diagram, Videos, Flashcards sections unchanged) ... */}
-
-          {/* Explanations Section */}
-          {data.explanations && Object.keys(data.explanations).length > 0 && (
+          {/* Explanations */}
+          {data.explanations && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
-                <FileText className="w-6 h-6 text-purple-400" />
-                <h3 className="text-xl font-semibold text-slate-200">Explanations</h3>
+                <FileText className="w-6 h-6 text-blue-400" />
+                <h3 className="text-xl font-semibold text-slate-200">Key Concepts</h3>
               </div>
-              <div className="space-y-4">
-                {Object.entries(data.explanations).map(([sub, text], idx) => (
-                  <div
-                    key={sub}
-                    className="p-5 bg-slate-800/50 rounded-2xl border-l-4 border-purple-500 hover:shadow-md transition-shadow duration-300 animate-fade-in"
-                    style={{ animationDelay: `${idx * 50}ms` }}
-                  >
-                    <h4 className="font-semibold text-purple-300 mb-2 text-lg">{sub}</h4>
-                    <ExplanationContent content={text} />
-                  </div>
-                ))}
+              <div className="bg-slate-800/50 rounded-2xl p-6 border border-white/5 space-y-4">
+                <ExplanationContent content={data.explanations} />
               </div>
             </div>
           )}
 
-          {/* Diagram Section */}
-          {data.mermaid && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg"></div>
-                <h3 className="text-xl font-semibold text-slate-200">Visual Diagram</h3>
-              </div>
-              <MermaidBlock code={data.mermaid} idSuffix={`${index}`} />
-            </div>
-          )}
-
-          {/* Videos Section */}
+          {/* Videos */}
           {data.videos && data.videos.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
                 <PlayCircle className="w-6 h-6 text-red-500" />
-                <h3 className="text-xl font-semibold text-slate-200">Video Resources</h3>
+                <h3 className="text-xl font-semibold text-slate-200">Video Tutorials</h3>
               </div>
-              <div className="space-y-4">
-                {data.videos.map((v, idx) => (
-                  <div
-                    key={idx}
-                    className="p-5 bg-red-900/10 rounded-2xl border border-red-500/20 animate-fade-in"
-                    style={{ animationDelay: `${idx * 100}ms` }}
-                  >
-                    <h4 className="font-semibold text-red-300 mb-3 text-lg">{v.title}</h4>
-                    <YouTubeEmbed link={v.link} />
-                  </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {data.videos.map((video, idx) => (
+                  <YouTubeEmbed key={idx} link={video.link} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Flashcards Section */}
+          {/* Mermaid Diagram */}
+          {data.mermaid && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <Layers className="w-6 h-6 text-teal-400" />
+                <h3 className="text-xl font-semibold text-slate-200">Visual Flow</h3>
+              </div>
+              <MermaidBlock code={data.mermaid} idSuffix={`mod-${index}`} />
+            </div>
+          )}
+          {/* ... Flashcards ... */}
           {data.flashcards && data.flashcards.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
@@ -267,13 +241,28 @@ function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext }) {
               </div>
               <Quiz
                 questions={data.quiz}
-                onComplete={(score) => onQuizComplete(index, score)}
+                onComplete={(score) => {
+                  setQuizCompleted(true);
+                  onQuizComplete(index, score);
+                }}
               />
-              {isGeneratingNext && (
-                <div className="mt-4 p-4 bg-blue-900/20 text-blue-200 rounded-xl border border-blue-500/30 flex items-center gap-3 animate-pulse">
-                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                  <span>Generating next module... please wait...</span>
+
+              {isGeneratingNext ? (
+                <div className="mt-6 p-6 bg-gradient-to-r from-blue-900/40 to-indigo-900/40 rounded-2xl border border-blue-500/30 flex flex-col items-center justify-center gap-3 animate-pulse">
+                  <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-lg font-semibold text-blue-200">Great job! Generating next module...</span>
                 </div>
+              ) : (
+                /* Show manual continue button if quiz is done, it's the last module, and we aren't generating yet (failed or initial state) */
+                isLastModule && quizCompleted && (
+                  <button
+                    onClick={() => onQuizComplete(index, {})}
+                    className="w-full mt-4 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl text-white font-bold text-lg shadow-lg hover:from-emerald-700 hover:to-teal-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <span>Continue to Next Module</span>
+                    <ChevronUp className="w-5 h-5 rotate-90" />
+                  </button>
+                )
               )}
             </div>
           )}
@@ -284,6 +273,7 @@ function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext }) {
 }
 
 export default function CourseRenderer({ course }) {
+  const { getAuthHeaders } = useAuth(); // Use auth hook
   const [localCourse, setLocalCourse] = useState(course);
   const [generatingNext, setGeneratingNext] = useState(false);
   const [completedModules, setCompletedModules] = useState({});
@@ -299,25 +289,19 @@ export default function CourseRenderer({ course }) {
   const courseId = localCourse.course_id;
 
   const handleQuizComplete = async (moduleIndex, score) => {
-    // Only proceed if score > 50% or some threshold if desired
-    // For now, just generate next module on completion
+    // Prevent multiple calls for same module attempt IF it's already generated
+    // But allowing retry if it failed (generatingNext is false)
+    if (generatingNext) return;
 
-    // Prevent multiple calls for same module attempt
-    if (completedModules[moduleIndex]) return;
-
-    // Mark this module as completed locally to avoid re-triggering
     setCompletedModules(prev => ({ ...prev, [moduleIndex]: true }));
 
     // If this is the last visible module, fetch the next one
     if (moduleIndex === moduleEntries.length - 1 && courseId) {
       setGeneratingNext(true);
       try {
-        const token = localStorage.getItem("token");
         const response = await fetch(`http://localhost:8000/course/${courseId}/generate_next_module`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: getAuthHeaders() // Use proper headers
         });
 
         if (response.ok) {
@@ -346,6 +330,7 @@ export default function CourseRenderer({ course }) {
     <div className="space-y-6 animate-fade-in-up">
       {/* Course Header */}
       <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 rounded-3xl p-8 text-white shadow-2xl mb-8">
+        {/* ... (Header content unchanged) ... */}
         <div className="flex items-center gap-4 mb-4">
           <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
             <BookOpen className="w-8 h-8" />
@@ -371,6 +356,7 @@ export default function CourseRenderer({ course }) {
               index={i}
               onQuizComplete={handleQuizComplete}
               isGeneratingNext={generatingNext && i === moduleEntries.length - 1}
+              isLastModule={i === moduleEntries.length - 1}
             />
           </div>
         ))}

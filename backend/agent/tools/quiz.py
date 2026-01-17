@@ -4,10 +4,10 @@ import json
 import re
 
 try:
-    from langchain_groq import ChatGroq
+    from langchain_ollama import ChatOllama
     from langchain_core.prompts import ChatPromptTemplate
 except Exception:
-    ChatGroq = None
+    ChatOllama = None
     ChatPromptTemplate = None
 
 
@@ -20,8 +20,12 @@ def _extract_json_array(text: str) -> Optional[List[Dict[str, Any]]]:
     text = re.sub(r"```(?:json)?\s*", "", text)
     text = re.sub(r"```\s*", "", text)
     text = text.strip()
+    
+    # Attempt to fix invalid escape sequences
+    text = re.sub(r'\\(?![\\/bfnrt"]|u[0-9a-fA-F]{4})', r'\\\\', text)
+
     try:
-        data = json.loads(text)
+        data = json.loads(text, strict=False)
         if isinstance(data, list):
             return data
         if isinstance(data, dict) and isinstance(data.get("quiz"), list):
@@ -32,7 +36,7 @@ def _extract_json_array(text: str) -> Optional[List[Dict[str, Any]]]:
         if not m:
             return None
         try:
-            data = json.loads(m.group(0))
+            data = json.loads(m.group(0), strict=False)
             if isinstance(data, list):
                 return data
             return None
@@ -87,9 +91,9 @@ def generate_quiz_for_topic(topic: str, subtopics: List[str], num_questions: int
     # Clean topic name to remove module prefixes
     clean_topic = _clean_topic_name(topic)
 
-    if ChatGroq and ChatPromptTemplate and os.getenv("GROQ_API_KEY"):
+    if ChatOllama and ChatPromptTemplate:
         try:
-            llm = ChatGroq(model="groq/compound", temperature=0.2)
+            llm = ChatOllama(model="llama3.1", temperature=0.2)
 
             prompt = ChatPromptTemplate.from_messages([
                 ("system", """

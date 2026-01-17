@@ -80,7 +80,7 @@ def verify_token(token: str) -> Optional[str]:
         return email
     except jwt.ExpiredSignatureError:
         return None
-    except jwt.JWTError:
+    except jwt.PyJWTError:
         return None
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
