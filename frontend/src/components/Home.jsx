@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CourseRenderer from "./CourseRenderer";
 import CourseHistory from "./CourseHistory";
 import { Sparkles, BookOpen, Loader2, LogOut, User } from "lucide-react";
@@ -11,12 +11,74 @@ export default function Home() {
   const [prompt, setPrompt] = useState("");
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(false); // Changed to boolean or string as needed, but let's keep it string consistent with original
   const [generationStatus, setGenerationStatus] = useState("Initializing...");
 
+  // Fetch course by ID
+  async function fetchCourse(courseId) {
+    if (!courseId) return;
+    try {
+      setLoading(true);
+      setGenerationStatus("Loading course...");
+      const res = await fetch(`${API_BASE}/course/${courseId}`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          setError("Course not found");
+          // Clear URL if not found to avoid stuck state
+          window.history.pushState({}, "", window.location.pathname);
+        } else {
+          throw new Error("Failed to load course");
+        }
+        return;
+      }
+
+      const data = await res.json();
+      // Ensure data format matches expectations. Backend returns { ..., course_data: {...} }
+      // We usually want course_data + course_id embedded
+      const fullCourse = { ...data.course_data, course_id: data.course_id };
+      setCourse(fullCourse);
+    } catch (err) {
+      console.error(err);
+      setError("Could not load course");
+    } finally {
+      setLoading(false);
+      setGenerationStatus("");
+    }
+  }
+
+  // Load course from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const courseId = params.get("courseId");
+    if (courseId) {
+      fetchCourse(courseId);
+    }
+  }, []);
+
   function handleSelectCourse(courseData) {
+    // If courseData comes from history, it might be the DB shape. 
+    // Usually history passes `course.course_data`. We might need `course_id`.
+    // Let's modify CourseHistory to pass the whole object or handle it here.
+    // For now assuming courseData has what we need or we fix CourseHistory.
+
+    // Actually, looking at CourseHistory: onClick={() => onSelectCourse(course.course_data)}
+    // It passes ONLY course_data. This is missing course_id!
+    // We should fix CourseHistory to pass ID too, OR we handle it.
+
+    // But wait, we want to update URL.
+    // Let's assume for now we just set state, but we should fix CourseHistory to pass the ID so we can set URL.
     setCourse(courseData);
-    setPrompt(""); // Clear prompt when viewing history
+    setPrompt("");
+
+    // If we have an ID (we should), update URL
+    if (courseData.course_id) {
+      const url = new URL(window.location);
+      url.searchParams.set("courseId", courseData.course_id);
+      window.history.pushState({}, "", url);
+    }
   }
 
   async function handleGenerate(e) {
@@ -81,6 +143,12 @@ export default function Home() {
             } else if (event.type === "complete") {
               // Merge course_id into the course data
               setCourse({ ...event.data, course_id: event.course_id });
+
+              // Update URL so refresh works
+              const url = new URL(window.location);
+              url.searchParams.set("courseId", event.course_id);
+              window.history.pushState({}, "", url);
+
               setLoading(false);
             } else if (event.type === "error") {
               // Set error state and stop loading

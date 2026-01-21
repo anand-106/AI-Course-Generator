@@ -87,8 +87,7 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str]) -> Dict[st
                 if isinstance(data, dict):
                     return data
             except json.JSONDecodeError as e:
-                # Try a specialized fallback for simple trailing comma or unescaped quote issues if possible
-                # For now, just try to extract the main object if there's garbage around it
+                
                 m = re.search(r"\{.*\}", content, re.DOTALL)
                 if m:
                     try:

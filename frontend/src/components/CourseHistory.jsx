@@ -18,7 +18,7 @@ export default function CourseHistory({ onSelectCourse }) {
 
         try {
             setLoading(true);
-            const res = await fetch(`${API_BASE}/course/list`, {
+            const res = await fetch(`${API_BASE}/course/list/all`, {
                 headers: headers,
             });
             if (res.status === 401) {
@@ -68,7 +68,7 @@ export default function CourseHistory({ onSelectCourse }) {
                 {courses.map((course) => (
                     <button
                         key={course.course_id}
-                        onClick={() => onSelectCourse(course.course_data)}
+                        onClick={() => onSelectCourse({ ...course.course_data, course_id: course.course_id })}
                         className="w-full text-left p-4 rounded-xl hover:bg-slate-800/80 hover:shadow-lg hover:shadow-purple-500/10 hover:scale-[1.02] transition-all duration-200 border border-transparent hover:border-purple-500/30 group relative overflow-hidden bg-slate-800/30"
                     >
                         <div className="relative z-10">

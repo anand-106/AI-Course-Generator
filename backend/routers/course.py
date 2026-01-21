@@ -27,6 +27,11 @@ async def generate_course(
     logger = logging.getLogger(__name__)
     course_id = str(uuid.uuid4())
     logger.info(f"Generating course stream for user: {current_user}, prompt: {req.prompt[:50]}...")
+    try:
+        with open("db_debug.log", "a") as f:
+            f.write(f"[{datetime.utcnow()}] START request for {course_id} user={current_user} prompt={req.prompt[:50]}\n")
+    except:
+        pass
 
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
@@ -89,6 +94,16 @@ async def generate_course(
                                 
                     elif node_name == "finalize_course":
                         full_course = updates.get("course", {})
+                        
+                        # DEBUG LOGGING to file
+                        try:
+                            with open("db_debug.log", "a") as f:
+                                f.write(f"[{datetime.utcnow()}] Reached finalize_course for {course_id}\n")
+                                f.write(f"Collection status: {'Available' if courses_collection is not None else 'None'}\n")
+                                f.write(f"User: {current_user}\n")
+                        except Exception as e:
+                            logger.error(f"Failed to write debug log: {e}")
+
                         # Save to DB - Include pending_topics from state (updates["course"] should have it now)
                         if courses_collection is not None:
                             try:
@@ -101,8 +116,16 @@ async def generate_course(
                                     "created_at": datetime.utcnow()
                                 })
                                 logger.info(f"Course {course_id} saved to DB")
+                                with open("db_debug.log", "a") as f:
+                                    f.write(f"[{datetime.utcnow()}] Successfully saved course {course_id}\n")
                             except Exception as e:
                                 logger.error(f"Failed to save course to DB: {e}")
+                                with open("db_debug.log", "a") as f:
+                                    f.write(f"[{datetime.utcnow()}] ERROR saving to DB: {e}\n")
+                        else:
+                            logger.error("Database unavailable, cannot save course")
+                            with open("db_debug.log", "a") as f:
+                                f.write(f"[{datetime.utcnow()}] SKIP saving: collection is None\n")
 
                         yield json.dumps({
                             "type": "complete",
@@ -114,8 +137,22 @@ async def generate_course(
             logger.error(f"Stream error: {str(exc)}")
             import traceback
             logger.error(traceback.format_exc())
+            # LOG ERROR to file
+            try:
+                with open("db_debug.log", "a") as f:
+                    f.write(f"[{datetime.utcnow()}] ERROR in stream for {course_id}: {str(exc)}\n")
+                    f.write(traceback.format_exc() + "\n")
+            except:
+                pass
+
             yield json.dumps({"type": "error", "message": str(exc)}) + "\n"
         finally:
+            try:
+                with open("db_debug.log", "a") as f:
+                    f.write(f"[{datetime.utcnow()}] Stream finished/closed for {course_id}\n")
+            except:
+                pass
+
             # Ensure we always send something if validation wasn't processed
             if not validation_processed:
                 logger.warning("Validation node was not processed, sending timeout error")
@@ -176,7 +213,24 @@ async def generate_next_module(course_id: str, current_user: str = Depends(get_c
         raise HTTPException(status_code=500, detail=f"Failed to generate module: {str(e)}")
 
 
-@router.get("/list")
+@router.get("/{course_id}")
+async def get_course(course_id: str, current_user: str = Depends(get_current_user)):
+    if courses_collection is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+        
+    course = courses_collection.find_one({
+        "course_id": course_id, 
+        "user_id": current_user
+    })
+    
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+        
+    course["_id"] = str(course["_id"])
+    return course
+
+
+@router.get("/list/all")
 async def get_user_courses(current_user: str = Depends(get_current_user)) -> List[Dict[str, Any]]:
     if courses_collection is None:
         raise HTTPException(status_code=503, detail="Database not available")
