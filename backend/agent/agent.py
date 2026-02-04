@@ -242,9 +242,15 @@ def generate_subtopics(topic: str) -> List[str]:
 def generate_module_content(topic: str) -> Dict[str, Any]:
     """Generates all content for a single module."""
     subtopics = generate_subtopics(topic)
-    explanations = generate_explanations_for_topic(topic, subtopics)
+    
+    # 1. Fetch visual resources FIRST so we can embed them
     videos = search_youtube_videos(f"{topic} tutorial", limit=3)
-    mermaid = generate_mermaid_for_topic(topic, list(explanations.keys()))
+    # We need subtopics for mermaid roughly, or just topic
+    mermaid = generate_mermaid_for_topic(topic, subtopics)
+    
+    # 2. Generate explanations, passing the resources needed for embedding
+    explanations = generate_explanations_for_topic(topic, subtopics, videos, mermaid)
+    
     flashcards = generate_flashcards_for_topic(topic, subtopics)
     quiz = generate_quiz_for_topic(topic, subtopics, num_questions=6)
     

@@ -74,6 +74,14 @@ function YouTubeEmbed({ link }) {
   try {
     const url = new URL(link);
     let videoId = url.searchParams.get("v");
+    let startTime = url.searchParams.get("t") || url.searchParams.get("start");
+    let endTime = url.searchParams.get("end");
+
+    // Clean up start time (handle "120s" -> "120")
+    if (startTime && startTime.endsWith('s')) {
+      startTime = startTime.slice(0, -1);
+    }
+
     if (!videoId && url.hostname.includes("youtube.com") && url.pathname.startsWith("/watch")) {
       videoId = url.searchParams.get("v");
     }
@@ -92,6 +100,8 @@ function YouTubeEmbed({ link }) {
       </a>
     );
 
+    const embedSrc = `https://www.youtube.com/embed/${videoId}?${startTime ? 'start=' + startTime + '&' : ''}${endTime ? 'end=' + endTime : ''}`;
+
     return (
       <div className="space-y-3">
         <button
@@ -100,7 +110,7 @@ function YouTubeEmbed({ link }) {
         >
           <div className="flex items-center gap-3">
             <PlayCircle className="w-6 h-6" />
-            <span className="font-semibold">Watch Video</span>
+            <span className="font-semibold">Watch Video {startTime ? `(Starts at ${startTime}s)` : ''}</span>
           </div>
           {isExpanded ? (
             <ChevronUp className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -114,7 +124,7 @@ function YouTubeEmbed({ link }) {
               <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/${videoId}`}
+                src={embedSrc}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -131,25 +141,109 @@ function YouTubeEmbed({ link }) {
   }
 }
 
-function ExplanationContent({ content }) {
-  if (typeof content === 'string') {
-    return <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">{content}</p>;
-  }
-
-  // Handle structured object content
+// Helper to parse content with tags like [[VIDEO_0]] or [[MERMAID]]
+function ExplanationContent({ content, videos, mermaid }) {
   if (typeof content === 'object' && content !== null) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-6">
         {Object.entries(content).map(([key, value]) => (
-          <div key={key}>
-            <span className="font-bold text-slate-100">{key}: </span>
-            <span className="text-slate-300">{String(value)}</span>
+          <div key={key} className="bg-slate-800/30 rounded-xl p-4 border border-white/5">
+            <h4 className="text-lg font-bold text-violet-300 mb-2">{key}</h4>
+            <RichTextRenderer text={String(value)} videos={videos} mermaid={mermaid} />
           </div>
         ))}
       </div>
     );
   }
+
+  if (typeof content === 'string') {
+    return <RichTextRenderer text={content} videos={videos} mermaid={mermaid} />
+  }
+
   return null;
+}
+
+function RichTextRenderer({ text, videos, mermaid }) {
+  // Track which assets are used in the text
+  const usedVideoIndices = new Set();
+  let mermaidUsed = false;
+
+  // Regex for tags: [[MERMAID]] or [[VIDEO_n]]
+  const parts = text.split(/(\[\[MERMAID\]\]|\[\[VIDEO_\d+\]\])/g);
+
+  const renderedContent = parts.map((part, idx) => {
+    if (part === "[[MERMAID]]") {
+      if (!mermaid) return null;
+      mermaidUsed = true;
+      return (
+        <div key={idx} className="my-6">
+          <div className="flex items-center gap-2 mb-2 text-teal-400 font-semibold text-sm">
+            <Layers className="w-4 h-4" /> Visual Flow
+          </div>
+          <MermaidBlock code={mermaid} idSuffix={`inline-${idx}`} />
+        </div>
+      );
+    }
+
+    const videoMatch = part.match(/\[\[VIDEO_(\d+)\]\]/);
+    if (videoMatch) {
+      const index = parseInt(videoMatch[1], 10);
+      const video = videos && videos[index];
+      if (!video) return null;
+      usedVideoIndices.add(index);
+      return (
+        <div key={idx} className="my-6">
+          <div className="flex items-center gap-2 mb-2 text-red-400 font-semibold text-sm">
+            <PlayCircle className="w-4 h-4" /> Video Tutorial
+          </div>
+          <YouTubeEmbed link={video.link} />
+        </div>
+      );
+    }
+
+    // Regular text
+    if (!part.trim()) return null;
+    return <p key={idx} className="whitespace-pre-wrap">{part}</p>;
+  });
+
+  // Fallback: Check for unused assets and append them
+  const unusedVideos = videos ? videos.filter((_, idx) => !usedVideoIndices.has(idx)) : [];
+  const showMermaidFallback = mermaid && !mermaidUsed;
+
+  return (
+    <div className="space-y-4 text-slate-300 leading-relaxed">
+      {renderedContent}
+
+      {/* Fallback for unused content */}
+      {(unusedVideos.length > 0 || showMermaidFallback) && (
+        <div className="mt-8 pt-8 border-t border-white/10 space-y-8">
+          <h4 className="text-lg font-semibold text-slate-400 uppercase tracking-widest text-xs">Additional Resources</h4>
+
+          {showMermaidFallback && (
+            <div>
+              <div className="flex items-center gap-2 mb-4 text-teal-400 font-semibold">
+                <Layers className="w-5 h-5" /> Visual Flow
+              </div>
+              <MermaidBlock code={mermaid} idSuffix="fallback" />
+            </div>
+          )}
+
+          {unusedVideos.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-4 text-red-400 font-semibold">
+                <PlayCircle className="w-5 h-5" /> Related Videos
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {unusedVideos.map((video, i) => (
+                  <YouTubeEmbed key={`fallback-vid-${i}`} link={video.link} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext, isLastModule }) {
@@ -182,44 +276,32 @@ function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext, isLa
       {/* Module Content */}
       {isExpanded && (
         <div className="p-8 space-y-8 animate-fade-in">
-          {/* Explanations */}
+          {/* Main Explanations with Embedded Content */}
           {data.explanations && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
                 <FileText className="w-6 h-6 text-blue-400" />
-                <h3 className="text-xl font-semibold text-slate-200">Key Concepts</h3>
+                <h3 className="text-xl font-semibold text-slate-200">Module Content</h3>
               </div>
-              <div className="bg-slate-800/50 rounded-2xl p-6 border border-white/5 space-y-4">
-                <ExplanationContent content={data.explanations} />
-              </div>
+
+              {/* Pass videos and mermaid down for embedding */}
+              <ExplanationContent
+                content={data.explanations}
+                videos={data.videos}
+                mermaid={data.mermaid}
+              />
             </div>
           )}
 
-          {/* Videos */}
-          {data.videos && data.videos.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <PlayCircle className="w-6 h-6 text-red-500" />
-                <h3 className="text-xl font-semibold text-slate-200">Video Tutorials</h3>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {data.videos.map((video, idx) => (
-                  <YouTubeEmbed key={idx} link={video.link} />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Fallback Display: If tags are NOT used by LLM or for older content, 
+              we might want to still show them? 
+              For now, the user requested "force", so we expect them inline.
+              However, if the LLM fails to embed, they vanish.
+              Safe approach: We could check if they were rendered?
+              Or just rely on the LLM complying.
+          */}
 
-          {/* Mermaid Diagram */}
-          {data.mermaid && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <Layers className="w-6 h-6 text-teal-400" />
-                <h3 className="text-xl font-semibold text-slate-200">Visual Flow</h3>
-              </div>
-              <MermaidBlock code={data.mermaid} idSuffix={`mod-${index}`} />
-            </div>
-          )}
+          {/* ... Flashcards ... */}
           {/* ... Flashcards ... */}
           {data.flashcards && data.flashcards.length > 0 && (
             <div className="space-y-4">
