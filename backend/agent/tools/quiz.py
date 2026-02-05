@@ -52,11 +52,7 @@ def generate_quiz_for_topic(topic: str, subtopics: List[str], num_questions: int
     )
 
     response = llm_client.invoke(
-        system_prompt=system_prompt.format(
-            num_questions=num_questions, 
-            subject=clean_topic, 
-            subtopics=", ".join(subtopics)
-        ),
+        system_prompt=system_prompt,
         human_prompt_template=human_prompt,
         input_vars={
             "subject": clean_topic,

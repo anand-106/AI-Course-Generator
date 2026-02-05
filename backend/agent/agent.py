@@ -58,11 +58,11 @@ Invalid prompts include:
 - Random text or gibberish.
 
 Respond with ONLY a JSON object:
-{"is_valid": true/false, "reason": "brief explanation"}
+{{ "is_valid": true/false, "reason": "brief explanation" }}
 """
 
 PROMPT_ENHANCER_SYS = "You are a senior instructional designer."
-PROMPT_ENHANCER_USER = "Generate a concise professional course title (max 12 words) for: {prompt}"
+PROMPT_ENHANCER_USER = "Generate a concise professional course title (max 7 words) for: {prompt}. Return ONLY the title text. No 'Here is'. No quotes."
 
 PROMPT_TOPICS_SYS = "You are an expert curriculum architect. Return raw JSON array only."
 PROMPT_TOPICS_USER = """
@@ -127,7 +127,7 @@ def node_generate_topics(state: CourseState) -> CourseState:
     )
 
     if isinstance(resp, list):
-        state["topics"] = resp
+        state["topics"] = [str(item) if not isinstance(item, str) else item for item in resp]
     else:
         # Fallback or strict error
         state["topics"] = [f"Module {i}: General Concept" for i in range(1, 6)]
@@ -207,7 +207,7 @@ def _generate_subtopics(topic: str) -> List[str]:
     )
     
     if isinstance(resp, list):
-        return resp
+        return [str(item) if not isinstance(item, str) else item for item in resp]
     return ["Overview", "Key Concepts", "Practical Examples", "Summary"]
 
 

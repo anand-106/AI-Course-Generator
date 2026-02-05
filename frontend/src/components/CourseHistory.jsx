@@ -57,26 +57,38 @@ export default function CourseHistory({ onSelectCourse }) {
                     </div>
                 )}
 
-                {courses.map((course) => (
-                    <button
-                        key={course.course_id}
-                        onClick={() => onSelectCourse({ ...course.course_data, course_id: course.course_id })}
-                        className="w-full text-left p-4 rounded-xl hover:bg-neutral-900 transition-all duration-200 border border-transparent hover:border-neutral-800 group relative overflow-hidden"
-                    >
-                        <div className="relative z-10">
-                            <h3 className="font-semibold text-neutral-300 line-clamp-1 group-hover:text-white transition-colors mb-2 text-sm">
-                                {course.title || course.prompt}
-                            </h3>
-                            <div className="flex items-center gap-2 text-xs text-neutral-600 group-hover:text-neutral-500">
-                                <Clock className="w-3 h-3" />
-                                <span>{new Date(course.created_at).toLocaleDateString()}</span>
+                {courses.map((course) => {
+                    const cleanTitle = (text) => {
+                        if (!text) return "";
+                        return text
+                            .replace(/^(Here is|Here's|Sure,? here is|I have generated|The title is|Title:)\s+.*?(course|title|about)?\s*:?\s*/i, "")
+                            .replace(/^["']|["']$/g, "")
+                            .trim();
+                    };
+
+                    const displayTitle = cleanTitle(course.title) || course.prompt;
+
+                    return (
+                        <button
+                            key={course.course_id}
+                            onClick={() => onSelectCourse({ ...course.course_data, course_id: course.course_id })}
+                            className="w-full text-left p-4 rounded-xl hover:bg-neutral-900 transition-all duration-200 border border-transparent hover:border-neutral-800 group relative overflow-hidden"
+                        >
+                            <div className="relative z-10">
+                                <h3 className="font-semibold text-neutral-300 line-clamp-1 group-hover:text-white transition-colors mb-2 text-sm">
+                                    {displayTitle}
+                                </h3>
+                                <div className="flex items-center gap-2 text-xs text-neutral-600 group-hover:text-neutral-500">
+                                    <Clock className="w-3 h-3" />
+                                    <span>{new Date(course.created_at).toLocaleDateString()}</span>
+                                </div>
                             </div>
-                        </div>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-white">
-                            <ChevronRight className="w-4 h-4" />
-                        </div>
-                    </button>
-                ))}
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                                <ChevronRight className="w-4 h-4" />
+                            </div>
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

@@ -36,7 +36,7 @@ class LLMClient:
                 logger.error(f"Failed to initialize ChatOllama: {e}")
                 self._llm = None
         else:
-            logger.warning("langchain_ollama library not installed or import failed.")
+            logger.warning("langchain_ollama library not installed or import failed. Ensure langchain-ollama is installed in the active environment.")
 
     @property
     def is_available(self) -> bool:
