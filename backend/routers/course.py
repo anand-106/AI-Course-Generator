@@ -246,3 +246,46 @@ async def get_user_courses(current_user: str = Depends(get_current_user)) -> Lis
     return courses
 
 
+class ProgressUpdate(BaseModel):
+    module_title: str
+    completed: bool = True
+    quiz_score: int = None
+
+
+@router.post("/{course_id}/progress")
+async def update_course_progress(
+    course_id: str, 
+    progress: ProgressUpdate,
+    current_user: str = Depends(get_current_user)
+):
+    if courses_collection is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    course_doc = courses_collection.find_one({"course_id": course_id, "user_id": current_user})
+    if not course_doc:
+        raise HTTPException(status_code=404, detail="Course not found")
+        
+    # Get existing progress or init
+    course_progress = course_doc.get("course_progress", {
+        "completed_modules": [],
+        "quiz_scores": {}
+    })
+    
+    # Update completed modules
+    if progress.completed:
+        if progress.module_title not in course_progress["completed_modules"]:
+            course_progress["completed_modules"].append(progress.module_title)
+            
+    # Update quiz score if provided
+    if progress.quiz_score is not None:
+        if "quiz_scores" not in course_progress:
+            course_progress["quiz_scores"] = {}
+        course_progress["quiz_scores"][progress.module_title] = progress.quiz_score
+        
+    # Update DB
+    courses_collection.update_one(
+        {"course_id": course_id},
+        {"$set": {"course_progress": course_progress}}
+    )
+    
+    return {"message": "Progress updated", "progress": course_progress}

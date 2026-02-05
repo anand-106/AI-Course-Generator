@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import CourseRenderer from "./CourseRenderer";
 import CourseHistory from "./CourseHistory";
-import { Sparkles, BookOpen, Loader2, LogOut, User, Plus } from "lucide-react";
+import Dashboard from "./Dashboard";
+import { Sparkles, BookOpen, LogOut, User, Plus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCourseStream } from "../hooks/useCourseStream";
 
@@ -10,6 +11,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 export default function Home() {
   const { user, logout, getAuthHeaders } = useAuth();
   const [prompt, setPrompt] = useState("");
+  const [showInput, setShowInput] = useState(false);
 
   const {
     course,
@@ -67,6 +69,7 @@ export default function Home() {
   function handleSelectCourse(courseData) {
     setCourse(courseData);
     setPrompt("");
+    setShowInput(false);
     if (courseData.course_id) {
       const url = new URL(window.location);
       url.searchParams.set("courseId", courseData.course_id);
@@ -78,6 +81,7 @@ export default function Home() {
     e.preventDefault();
     setFetchError("");
     generateCourse(prompt, (finalCourse) => {
+      setShowInput(false);
       if (finalCourse.course_id) {
         const url = new URL(window.location);
         url.searchParams.set("courseId", finalCourse.course_id);
@@ -100,8 +104,7 @@ export default function Home() {
         <div className="relative z-10 max-w-5xl mx-auto px-6 py-12">
 
           {/* Top Bar */}
-          <div className="flex justify-between items-center mb-16 animate-fade-in">
-            {/* Logo/Brand for uniformity */}
+          <div className="flex justify-between items-center mb-10 animate-fade-in">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white text-black rounded-xl flex items-center justify-center">
                 <Sparkles className="w-5 h-5" />
@@ -110,6 +113,12 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-6">
+              <button
+                onClick={() => { setCourse(null); setShowInput(true); }}
+                className="hidden md:flex items-center gap-2 px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-full text-sm font-medium hover:bg-neutral-800 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> New Course
+              </button>
               <div className="flex items-center gap-3 px-4 py-2 rounded-full border border-neutral-800 bg-neutral-900/50">
                 <User className="w-4 h-4 text-neutral-400" />
                 <span className="text-sm text-neutral-300">{user?.email}</span>
@@ -123,18 +132,13 @@ export default function Home() {
             </div>
           </div>
 
-          {!course && !loading && (
-            <div className="text-center mb-16 animate-slide-up">
-              <h1 className="text-5xl font-bold text-white mb-6">What do you want to learn?</h1>
-              <p className="text-xl text-neutral-400 font-light">
-                Generate comprehensive, structured courses on any topic.
-              </p>
-            </div>
-          )}
-
-          {/* Input Area */}
-          {!course && !loading && (
-            <div className="max-w-2xl mx-auto animate-slide-up delay-100">
+          {/* Input Area (Visible if Course is Null and showInput is specific) */}
+          {!course && !loading && showInput && (
+            <div className="max-w-2xl mx-auto mb-16 animate-slide-up">
+              <div className="text-center mb-8">
+                <h1 className="text-4xl font-bold text-white mb-4">What do you want to learn?</h1>
+                <p className="text-neutral-400">Generate comprehensive, structured courses on any topic.</p>
+              </div>
               <form onSubmit={handleGenerate} className="relative group">
                 <div className="absolute -inset-1 bg-white/10 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
                 <div className="relative bg-neutral-900 border border-neutral-800 rounded-2xl p-2 shadow-2xl flex flex-col gap-2">
@@ -159,13 +163,7 @@ export default function Home() {
                   </div>
                 </div>
               </form>
-
-              {error && (
-                <div className="mt-8 p-4 bg-red-900/20 border border-red-900/50 text-red-200 rounded-xl flex items-center gap-3 justify-center animate-shake">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                  {error}
-                </div>
-              )}
+              <button onClick={() => setShowInput(false)} className="mx-auto block mt-6 text-neutral-500 hover:text-white text-sm">Cancel</button>
             </div>
           )}
 
@@ -183,18 +181,30 @@ export default function Home() {
             </div>
           )}
 
+          {/* Dashboard View */}
+          {!course && !loading && !showInput && (
+            <Dashboard onResumeCourse={handleSelectCourse} />
+          )}
+
           {/* Result View */}
           {course && !generating && (
             <div className="animate-fade-in-up">
               <div className="flex justify-between items-center mb-6">
                 <button
-                  onClick={() => { setCourse(null); setPrompt(""); }}
+                  onClick={() => { setCourse(null); setPrompt(""); setShowInput(false); }}
                   className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors"
                 >
-                  <Plus className="w-4 h-4 rotate-45" /> Back to Generator
+                  <Plus className="w-4 h-4 rotate-45" /> Back to Dashboard
                 </button>
               </div>
               <CourseRenderer course={course} />
+            </div>
+          )}
+
+          {error && (
+            <div className="fixed bottom-8 right-8 p-4 bg-red-900/20 border border-red-900/50 text-red-200 rounded-xl flex items-center gap-3 animate-shake shadow-2xl backdrop-blur-md">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              {error}
             </div>
           )}
 

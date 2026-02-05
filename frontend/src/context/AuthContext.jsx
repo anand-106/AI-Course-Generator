@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const storedToken = localStorage.getItem('auth_token');
     const storedUser = localStorage.getItem('auth_user');
-    
+
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
@@ -83,6 +83,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('auth_user');
     setToken(null);
     setUser(null);
+    window.history.replaceState({}, document.title, window.location.pathname);
   };
 
   const isAuthenticated = () => {

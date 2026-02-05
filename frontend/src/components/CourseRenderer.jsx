@@ -22,7 +22,31 @@ export default function CourseRenderer({ course }) {
   const handleQuizComplete = async (moduleIndex, score) => {
     if (generatingNext) return;
 
+    const currentModuleTitle = moduleEntries[moduleIndex]?.[0];
+
+    // Local state update
     setCompletedModules(prev => ({ ...prev, [moduleIndex]: true }));
+
+    // Save progress to DB
+    if (currentModuleTitle) {
+      try {
+        await fetch(`http://localhost:8000/course/${courseId}/progress`, {
+          method: 'POST',
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            module_title: currentModuleTitle,
+            completed: true,
+            quiz_score: typeof score === 'number' ? score : undefined
+          })
+        });
+      } catch (e) {
+        console.error("Failed to save progress", e);
+      }
+    }
+
     if (moduleIndex === moduleEntries.length - 1 && courseId) {
       setGeneratingNext(true);
       try {
