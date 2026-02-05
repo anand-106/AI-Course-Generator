@@ -1,14 +1,11 @@
-from typing import Dict, List, Any, AsyncIterator
-import os
-import json
-import re
+from typing import Dict, List, Any, AsyncIterator, Optional
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
 from langgraph.graph import StateGraph, END
-from langchain_ollama import ChatOllama
-from langchain_core.prompts import ChatPromptTemplate
 
+# Import Tools
 from agent.tools import (
     generate_explanations_for_topic,
     search_youtube_videos,
@@ -16,241 +13,145 @@ from agent.tools import (
     generate_flashcards_for_topic,
     generate_quiz_for_topic,
 )
+from agent.llm import LLMClient
 
-# Load .env file (kept for other potential env vars, but Groq key not needed)
+# Setup
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
-# -------------------------------------------------------------------
-# LLM SETUP (OLLAMA LOCAL)
-# -------------------------------------------------------------------
-
-# Using local Llama 3.1 model via Ollama
-llm = ChatOllama(
-    model="llama3.1",
-    temperature=0.3
-)
+# Services
+llm_client = LLMClient()
+logger = logging.getLogger(__name__)
 
 # -------------------------------------------------------------------
 # STATE
 # -------------------------------------------------------------------
 
 class CourseState(dict):
+    """Represents the flow state of course generation."""
     prompt: str
     enhanced_prompt: str
     topics: List[str]
-    # Iterative state
     pending_topics: List[str]
     generated_modules: Dict[str, Any]
-    # Final output
     course: Dict[str, Any]
-    # Validation
+    # Validation & Control
     is_valid: bool = True
-    validation_error: str = None
-    # Control flags
+    validation_error: Optional[str] = None
     single_step: bool = False
 
 
-def extract_json_list(text: str) -> List[str]:
-    """Extracts a JSON list from a string, handling markdown code blocks."""
-    text = text.strip()
-    # Try to find a JSON list in markdown code blocks
-    match = re.search(r"```(?:json)?\s*(\[\s*.*?\s*\])\s*```", text, re.DOTALL)
-    if match:
-        text = match.group(1)
-    else:
-        # Fallback: try to find the start and end of a list
-        start = text.find('[')
-        end = text.rfind(']')
-        if start != -1 and end != -1:
-            text = text[start:end+1]
-    
-    try:
-        return json.loads(text, strict=False)
-    except json.JSONDecodeError as e:
-        print(f"FAILED TO PARSE JSON. RAW CONTENT:\n{text}")
-        raise e
+# -------------------------------------------------------------------
+# PROMPTS
+# -------------------------------------------------------------------
+
+PROMPT_VALIDATOR_SYS = """You are a prompt validator for an educational course generation system.
+A valid prompt should be:
+- Related to learning, education, or skill development.
+- About a subject, topic, skill, or field that can be taught.
+- Suitable for creating structured learning content.
+
+Invalid prompts include:
+- Personal questions or conversations.
+- Requests for general information or facts.
+- Non-educational topics (weather, jokes, etc.).
+- Random text or gibberish.
+
+Respond with ONLY a JSON object:
+{"is_valid": true/false, "reason": "brief explanation"}
+"""
+
+PROMPT_ENHANCER_SYS = "You are a senior instructional designer."
+PROMPT_ENHANCER_USER = "Generate a concise professional course title (max 12 words) for: {prompt}"
+
+PROMPT_TOPICS_SYS = "You are an expert curriculum architect. Return raw JSON array only."
+PROMPT_TOPICS_USER = """
+Design a complete course for "{title}".
+Requirements:
+- 8–12 modules
+- Progressive difficulty
+- Industry-relevant
+- Each module should be clearly distinct
+- Return ONLY a JSON array of strings
+"""
+
+PROMPT_SUBTOPICS_SYS = "You are a subject matter expert. Return raw JSON array only."
+PROMPT_SUBTOPICS_USER = """
+For the course module "{topic}", generate 4–6 detailed submodules.
+Each submodule should represent a clear learning unit.
+Return ONLY a JSON array of short strings.
+"""
 
 
 # -------------------------------------------------------------------
-# NODE 0: Validate Prompt
+# NODES
 # -------------------------------------------------------------------
 
 def node_validate_prompt(state: CourseState) -> CourseState:
-    """
-    Validate if the prompt is related to course generation or educational content.
-    Returns state with is_valid=False and validation_error if not valid.
-    """
-    import logging
-    logger = logging.getLogger(__name__)
+    logger.info(f"Validating prompt: {state.get('prompt', '')[:50]}...")
     
-    try:
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a prompt validator for an educational course generation system.
-Your task is to determine if a user's prompt is suitable for generating an educational course.
+    resp = llm_client.invoke(
+        system_prompt=PROMPT_VALIDATOR_SYS,
+        human_prompt_template="Validate this prompt for course generation: {prompt}",
+        input_vars={"prompt": state["prompt"]}
+    )
 
-A valid prompt should be:
-- Related to learning, education, or skill development
-- About a subject, topic, skill, or field that can be taught
-- Suitable for creating structured learning content
-
-Invalid prompts include:
-- Personal questions or conversations
-- Requests for general information or facts
-- Non-educational topics (weather, jokes, etc.)
-- Random text or gibberish
-- Requests that don't involve learning or teaching
-
-Respond with ONLY a JSON object in this exact format:
-{{"is_valid": true/false, "reason": "brief explanation"}}
-
-If valid, set is_valid to true. If invalid, set is_valid to false and provide a clear reason."""),
-            ("human", "Validate this prompt for course generation: {prompt}")
-        ])
-        
-        chain = prompt | llm
-        logger.info(f"Validating prompt: {state['prompt'][:50]}...")
-        resp = chain.invoke({"prompt": state["prompt"]})
-        logger.info(f"Validation response received: {resp.content[:100]}...")
-        
-        # Extract JSON from response
-        response_text = resp.content.strip()
-        # Remove markdown code blocks if present
-        response_text = re.sub(r"```(?:json)?\s*", "", response_text)
-        response_text = re.sub(r"```\s*", "", response_text)
-        response_text = response_text.strip()
-        
-        # Try to find JSON object
-        start = response_text.find('{')
-        end = response_text.rfind('}') + 1
-        if start != -1 and end > start:
-            response_text = response_text[start:end]
-        
-        validation_result = json.loads(response_text)
-        logger.info(f"Parsed validation result: {validation_result}")
-        
-        state["is_valid"] = validation_result.get("is_valid", True)
+    if isinstance(resp, dict):
+        state["is_valid"] = resp.get("is_valid", True)
         if not state["is_valid"]:
-            reason = validation_result.get("reason", "This prompt is not suitable for course generation.")
-            # Create a user-friendly error message
-            error_msg = f"{reason}\n\nPlease provide a topic, subject, or skill that can be taught. Examples: 'Python programming', 'Machine Learning basics', 'Web development', 'Data structures and algorithms'."
-            state["validation_error"] = error_msg
-            logger.info(f"Validation failed: {error_msg}")
-        else:
-            logger.info("Validation passed")
-            
-    except (json.JSONDecodeError, KeyError) as e:
-        # If we can't parse the validation, default to valid (fail open)
-        logger.warning(f"Could not parse validation response: {e}")
-        logger.warning(f"Response was: {resp.content if 'resp' in locals() else 'No response'}")
+            state["validation_error"] = resp.get("reason", "Prompt not suitable for course generation.")
+    else:
+        # Fail open
         state["is_valid"] = True
-    except Exception as e:
-        logger.error(f"Error during validation: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        # On error, default to valid to not block users
-        state["is_valid"] = True
-    
+        
     return state
-
-
-# -------------------------------------------------------------------
-# NODE 1: Enhance Prompt → Course Title
-# -------------------------------------------------------------------
 
 
 def node_enhance_prompt(state: CourseState) -> CourseState:
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a senior instructional designer."),
-        ("human", "Generate a concise professional course title (max 12 words) for: {prompt}")
-    ])
-
-    chain = prompt | llm
-    resp = chain.invoke({"prompt": state["prompt"]})
-
-    state["enhanced_prompt"] = resp.content.strip()
+    resp = llm_client.invoke(
+        system_prompt=PROMPT_ENHANCER_SYS,
+        human_prompt_template=PROMPT_ENHANCER_USER,
+        input_vars={"prompt": state["prompt"]},
+        require_json=False
+    )
+    
+    state["enhanced_prompt"] = resp if resp else state["prompt"]
     return state
 
-# -------------------------------------------------------------------
-# NODE 2: Generate Course Topics (Modules)
-# -------------------------------------------------------------------
 
 def node_generate_topics(state: CourseState) -> CourseState:
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert curriculum architect. Return raw JSON array only, no markdown, no code blocks."),
-        ("human", """
-        Design a complete course for "{title}".
+    resp = llm_client.invoke(
+        system_prompt=PROMPT_TOPICS_SYS,
+        human_prompt_template=PROMPT_TOPICS_USER,
+        input_vars={"title": state["enhanced_prompt"]}
+    )
 
-        Requirements:
-        - 8–12 modules
-        - Progressive difficulty
-        - Industry-relevant
-        - Each module should be clearly distinct
-        - Return ONLY a JSON array of strings
-        - Do not use markdown formatting
-        """)
-    ])
-
-    chain = prompt | llm
-    resp = chain.invoke({"title": state["enhanced_prompt"]})
-
-    try:
-        topics = extract_json_list(resp.content)
-    except Exception as e:
-        print(f"Error parsing topics: {e}")
-        # Fallback or retry logic could go here, for now raising to be handled upstream or fail
-        raise ValueError("Failed to parse topics from LLM response")
-
-    if not isinstance(topics, list) or not topics:
-        raise ValueError("Invalid topics generated by AI")
-
-    state["topics"] = topics
-    state["pending_topics"] = topics[:]  # Initialize pending
-    state["generated_modules"] = {}      # Initialize storage
+    if isinstance(resp, list):
+        state["topics"] = resp
+    else:
+        # Fallback or strict error
+        state["topics"] = [f"Module {i}: General Concept" for i in range(1, 6)]
+        
+    state["pending_topics"] = state["topics"][:]
+    state["generated_modules"] = {}
     return state
 
 
 # -------------------------------------------------------------------
-# HELPER: Generate Submodules per Topic
+# PUBLIC HELPERS
 # -------------------------------------------------------------------
 
-def generate_subtopics(topic: str) -> List[str]:
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a subject matter expert. Return raw JSON array only, no markdown."),
-        ("human", """
-        For the course module "{topic}", generate 4–6 detailed submodules.
-        Each submodule should represent a clear learning unit.
-        Return ONLY a JSON array of short strings.
-        Do not use markdown formatting.
-        """)
-    ])
-
-    chain = prompt | llm
-    resp = chain.invoke({"topic": topic})
-
-    try:
-        subtopics = extract_json_list(resp.content)
-    except Exception as e:
-        print(f"Error parsing subtopics: {e}")
-        raise ValueError(f"Failed to parse subtopics for {topic}")
-
-    if not isinstance(subtopics, list) or not subtopics:
-        raise ValueError(f"Invalid subtopics for module: {topic}")
-
-    return subtopics
-
 def generate_module_content(topic: str) -> Dict[str, Any]:
-    """Generates all content for a single module."""
-    subtopics = generate_subtopics(topic)
+    """Generates full content for a single module (public helper)."""
+    # Generate Subtopics First
+    subtopics = _generate_subtopics(topic)
     
-    # 1. Fetch visual resources FIRST so we can embed them
+    # Gather Resources
     videos = search_youtube_videos(f"{topic} tutorial", limit=3)
-    # We need subtopics for mermaid roughly, or just topic
     mermaid = generate_mermaid_for_topic(topic, subtopics)
     
-    # 2. Generate explanations, passing the resources needed for embedding
+    # Content generation
     explanations = generate_explanations_for_topic(topic, subtopics, videos, mermaid)
-    
     flashcards = generate_flashcards_for_topic(topic, subtopics)
     quiz = generate_quiz_for_topic(topic, subtopics, num_questions=6)
     
@@ -263,65 +164,70 @@ def generate_module_content(topic: str) -> Dict[str, Any]:
         "quiz": quiz
     }
 
-# -------------------------------------------------------------------
-# NODE 3: Generate Module Content (Iterative)
-# -------------------------------------------------------------------
 
 def node_generate_module(state: CourseState) -> CourseState:
-    
     if not state["pending_topics"]:
         return state
     
     current_topic = state["pending_topics"].pop(0)
     
-    # Use extracted function
-    module_data = generate_module_content(current_topic)
+    # Reuse the helper
+    state["generated_modules"][current_topic] = generate_module_content(current_topic)
     
-    # Store in state
-    state["generated_modules"][current_topic] = module_data
     return state
 
 
-# -------------------------------------------------------------------
-# NODE 4: Finalize
-# -------------------------------------------------------------------
 
 def node_finalize_course(state: CourseState) -> CourseState:
-    ordered_modules = {}
-    
-    # Check if we have generated modules, if not, we can't really order them 
-    # but strictly speaking we only include what is generated.
-    
-    for topic in state["topics"]:
-        if topic in state["generated_modules"]:
-            ordered_modules[topic] = state["generated_modules"][topic]
+    # Organize based on original topics order
+    ordered_modules = {
+        topic: state["generated_modules"][topic]
+        for topic in state["topics"]
+        if topic in state["generated_modules"]
+    }
 
     state["course"] = {
         "title": state["enhanced_prompt"],
         "modules": ordered_modules,
-        "topics": state["topics"],           # Full list of topics planned
-        "pending_topics": state["pending_topics"] # Topics yet to be generated
+        "topics": state["topics"],
+        "pending_topics": state["pending_topics"]
     }
     return state
 
 
 # -------------------------------------------------------------------
-# CONDITIONAL EDGES
+# HELPERS
+# -------------------------------------------------------------------
+
+def _generate_subtopics(topic: str) -> List[str]:
+    resp = llm_client.invoke(
+        system_prompt=PROMPT_SUBTOPICS_SYS,
+        human_prompt_template=PROMPT_SUBTOPICS_USER,
+        input_vars={"topic": topic}
+    )
+    
+    if isinstance(resp, list):
+        return resp
+    return ["Overview", "Key Concepts", "Practical Examples", "Summary"]
+
+
+# -------------------------------------------------------------------
+# GRAPH
 # -------------------------------------------------------------------
 
 def should_continue(state: CourseState) -> str:
-    # If single_step mode is on, we stop after one module (which just finished)
     if state.get("single_step", False):
         return "finalize_course"
-
     if state["pending_topics"]:
         return "generate_module"
     return "finalize_course"
 
 
-# -------------------------------------------------------------------
-# GRAPH BUILDER
-# -------------------------------------------------------------------
+def should_continue_after_validation(state: CourseState) -> str:
+    if not state.get("is_valid", True):
+        return "end"
+    return "enhance_prompt"
+
 
 def build_graph():
     graph = StateGraph(CourseState)
@@ -333,12 +239,6 @@ def build_graph():
     graph.add_node("finalize_course", node_finalize_course)
 
     graph.set_entry_point("validate_prompt")
-    
-    # Conditional edge: if validation fails, go to END, otherwise continue
-    def should_continue_after_validation(state: CourseState) -> str:
-        if not state.get("is_valid", True):
-            return "end"
-        return "enhance_prompt"
     
     graph.add_conditional_edges(
         "validate_prompt",
@@ -360,14 +260,11 @@ def build_graph():
             "finalize_course": "finalize_course"
         }
     )
+    
     graph.add_edge("finalize_course", END)
 
     return graph.compile()
 
-
-# -------------------------------------------------------------------
-# PUBLIC API (Streaming)
-# -------------------------------------------------------------------
 
 async def run_workflow_stream(user_prompt: str, single_step: bool = False) -> AsyncIterator[Dict[str, Any]]:
     workflow = build_graph()
@@ -375,10 +272,12 @@ async def run_workflow_stream(user_prompt: str, single_step: bool = False) -> As
         "prompt": user_prompt,
         "is_valid": True,
         "validation_error": None,
-        "single_step": single_step
+        "single_step": single_step,
+        "topics": [],
+        "pending_topics": [],
+        "generated_modules": {},
+        "course": {}
     }
     
-    # We'll stream the updates from the graph
-    # stream_mode="updates" yields only the updates returned by the nodes
     async for event in workflow.astream(initial_state, stream_mode="updates"):
         yield event

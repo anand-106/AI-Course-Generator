@@ -2,13 +2,11 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-200 antialiased;
+    @apply bg-black text-neutral-200 antialiased;
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    /* Clean Minimalist Background - no colored globs */
     background-image:
-      radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.1) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, rgba(6, 182, 212, 0.1) 0px, transparent 50%);
+      radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
     background-attachment: fixed;
   }
 }
@@ -31,15 +29,15 @@
   }
 
   .glass-card {
-    @apply bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-xl;
+    @apply bg-neutral-900/50 backdrop-blur-xl border border-white/10 shadow-xl;
   }
 
   .glass-input {
-    @apply bg-slate-800/50 border border-white/10 text-white placeholder-slate-400 focus:border-purple-500 focus:ring-purple-500/20;
+    @apply bg-neutral-900 border border-white/10 text-white placeholder-neutral-500 focus:border-white/50 focus:ring-white/10;
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-neutral-200 to-neutral-500;
   }
 }
 
@@ -146,21 +144,21 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - Dark Mode */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #333333;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #555555;
 }

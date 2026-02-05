@@ -1,55 +1,31 @@
 import { useState, useEffect } from "react";
 import CourseRenderer from "./CourseRenderer";
 import CourseHistory from "./CourseHistory";
-import { Sparkles, BookOpen, Loader2, LogOut, User } from "lucide-react";
+import { Sparkles, BookOpen, Loader2, LogOut, User, Plus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useCourseStream } from "../hooks/useCourseStream";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 export default function Home() {
   const { user, logout, getAuthHeaders } = useAuth();
   const [prompt, setPrompt] = useState("");
-  const [course, setCourse] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false); // Changed to boolean or string as needed, but let's keep it string consistent with original
-  const [generationStatus, setGenerationStatus] = useState("Initializing...");
 
-  // Fetch course by ID
-  async function fetchCourse(courseId) {
-    if (!courseId) return;
-    try {
-      setLoading(true);
-      setGenerationStatus("Loading course...");
-      const res = await fetch(`${API_BASE}/course/${courseId}`, {
-        headers: getAuthHeaders(),
-      });
+  const {
+    course,
+    setCourse,
+    loading: generating,
+    error: generationError,
+    status: generationStatus,
+    generateCourse
+  } = useCourseStream(getAuthHeaders, logout);
 
-      if (!res.ok) {
-        if (res.status === 404) {
-          setError("Course not found");
-          // Clear URL if not found to avoid stuck state
-          window.history.pushState({}, "", window.location.pathname);
-        } else {
-          throw new Error("Failed to load course");
-        }
-        return;
-      }
+  const [fetchLoading, setFetchLoading] = useState(false);
+  const [fetchError, setFetchError] = useState("");
 
-      const data = await res.json();
-      // Ensure data format matches expectations. Backend returns { ..., course_data: {...} }
-      // We usually want course_data + course_id embedded
-      const fullCourse = { ...data.course_data, course_id: data.course_id };
-      setCourse(fullCourse);
-    } catch (err) {
-      console.error(err);
-      setError("Could not load course");
-    } finally {
-      setLoading(false);
-      setGenerationStatus("");
-    }
-  }
+  const loading = generating || fetchLoading;
+  const error = generationError || fetchError;
 
-  // Load course from URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const courseId = params.get("courseId");
@@ -58,22 +34,39 @@ export default function Home() {
     }
   }, []);
 
+  async function fetchCourse(courseId) {
+    if (!courseId) return;
+    try {
+      setFetchLoading(true);
+      setFetchError("");
+      const res = await fetch(`${API_BASE}/course/${courseId}`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          setFetchError("Course not found");
+          window.history.pushState({}, "", window.location.pathname);
+        } else {
+          throw new Error("Failed to load course");
+        }
+        return;
+      }
+
+      const data = await res.json();
+      const fullCourse = { ...data.course_data, course_id: data.course_id };
+      setCourse(fullCourse);
+    } catch (err) {
+      console.error(err);
+      setFetchError("Could not load course");
+    } finally {
+      setFetchLoading(false);
+    }
+  }
+
   function handleSelectCourse(courseData) {
-    // If courseData comes from history, it might be the DB shape. 
-    // Usually history passes `course.course_data`. We might need `course_id`.
-    // Let's modify CourseHistory to pass the whole object or handle it here.
-    // For now assuming courseData has what we need or we fix CourseHistory.
-
-    // Actually, looking at CourseHistory: onClick={() => onSelectCourse(course.course_data)}
-    // It passes ONLY course_data. This is missing course_id!
-    // We should fix CourseHistory to pass ID too, OR we handle it.
-
-    // But wait, we want to update URL.
-    // Let's assume for now we just set state, but we should fix CourseHistory to pass the ID so we can set URL.
     setCourse(courseData);
     setPrompt("");
-
-    // If we have an ID (we should), update URL
     if (courseData.course_id) {
       const url = new URL(window.location);
       url.searchParams.set("courseId", courseData.course_id);
@@ -81,225 +74,130 @@ export default function Home() {
     }
   }
 
-  async function handleGenerate(e) {
+  function handleGenerate(e) {
     e.preventDefault();
-    setError("");
-    setCourse(null);
-    setLoading(true);
-    setGenerationStatus("Initializing...");
-
-    try {
-      const res = await fetch(`${API_BASE}/course/generate`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          logout();
-          throw new Error("Session expired. Please login again.");
-        }
-        throw new Error(`API error ${res.status}`);
+    setFetchError("");
+    generateCourse(prompt, (finalCourse) => {
+      if (finalCourse.course_id) {
+        const url = new URL(window.location);
+        url.searchParams.set("courseId", finalCourse.course_id);
+        window.history.pushState({}, "", url);
       }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        // Keep the last partial line in the buffer
-        buffer = lines.pop();
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const event = JSON.parse(line);
-
-            if (event.type === "status") {
-              setGenerationStatus(event.message);
-            } else if (event.type === "meta") {
-              setCourse({
-                title: event.data.title,
-                modules: {} // Initialize with empty modules
-              });
-            } else if (event.type === "module") {
-              console.log("Module received:", event.data.module_title, "Quiz:", event.data.quiz);
-              setCourse(prev => {
-                if (!prev) return prev;
-                return {
-                  ...prev,
-                  modules: {
-                    ...prev.modules,
-                    [event.data.module_title]: event.data
-                  }
-                };
-              });
-            } else if (event.type === "complete") {
-              // Merge course_id into the course data
-              setCourse({ ...event.data, course_id: event.course_id });
-
-              // Update URL so refresh works
-              const url = new URL(window.location);
-              url.searchParams.set("courseId", event.course_id);
-              window.history.pushState({}, "", url);
-
-              setLoading(false);
-            } else if (event.type === "error") {
-              // Set error state and stop loading
-              const errorMessage = event.message || "An error occurred during course generation";
-              console.log("Error received from stream:", errorMessage);
-              setError(errorMessage);
-              setLoading(false);
-              setGenerationStatus("");
-              // Break out of the stream loop
-              return;
-            }
-          } catch (parseError) {
-            // Only catch JSON parsing errors, not application errors
-            if (parseError instanceof SyntaxError) {
-              console.error("Error parsing stream line:", line, parseError);
-            } else {
-              // Re-throw application errors
-              throw parseError;
-            }
-          }
-        }
-      }
-    } catch (err) {
-      setError(err?.message || "Something went wrong");
-      setLoading(false);
-    }
+    });
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-950">
+    <div className="flex h-screen overflow-hidden bg-black text-neutral-200">
+      <CourseHistory onSelectCourse={handleSelectCourse} />
 
-      {/* Sidebar - Course History */}
-      <CourseHistory
-        onSelectCourse={handleSelectCourse}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto relative scroll-smooth">
-
-        {/* Animated background elements (constrained to main area) */}
+      <div className="flex-1 overflow-y-auto relative scroll-smooth bg-black">
+        {/* Subtle Background Glows */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none sticky top-0 h-0">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-purple-600/20 rounded-full blur-[100px] animate-pulse"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px] animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-pink-600/20 rounded-full blur-[100px] animate-pulse delay-2000"></div>
+          <div className="absolute top-20 left-10 w-96 h-96 bg-white/5 rounded-full blur-[150px] animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-[500px] h-[500px] bg-neutral-800/20 rounded-full blur-[150px] animate-pulse delay-1000"></div>
         </div>
 
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="relative z-10 max-w-5xl mx-auto px-6 py-12">
 
-          {/* User Header with Logout */}
-          <div className="flex justify-between items-center mb-8 animate-fade-in">
-            <div className="flex items-center gap-3 px-4 py-2 bg-slate-900/60 backdrop-blur-lg rounded-xl border border-white/10 shadow-md">
-              <div className="w-8 h-8 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
+          {/* Top Bar */}
+          <div className="flex justify-between items-center mb-16 animate-fade-in">
+            {/* Logo/Brand for uniformity */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white text-black rounded-xl flex items-center justify-center">
+                <Sparkles className="w-5 h-5" />
               </div>
-              <span className="text-slate-200 font-medium">{user?.email}</span>
+              <span className="font-bold text-2xl tracking-tight text-white">COURSEGEN</span>
             </div>
-            <button
-              onClick={logout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/50 text-red-400 rounded-xl font-medium shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Logout</span>
-            </button>
-          </div>
 
-          {/* Header */}
-          <div className="text-center mb-12 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl mb-6 shadow-lg transform hover:scale-110 transition-transform duration-300 shadow-purple-500/30">
-              <Sparkles className="w-10 h-10 text-white animate-pulse" />
-            </div>
-            <h1 className="text-5xl sm:text-6xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4 tracking-tight drop-shadow-sm">
-              COURSEGEN
-            </h1>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
-              Transform your ideas into comprehensive, structured courses powered by AI
-            </p>
-          </div>
-
-          {/* Form Card */}
-          <div className="glass-card rounded-3xl p-8 sm:p-10 mb-8 animate-slide-up">
-            <form onSubmit={handleGenerate} className="space-y-6">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 rounded-2xl blur-xl transition-opacity opacity-0 group-hover:opacity-100 duration-500"></div>
-                <textarea
-                  placeholder="Describe the course you want to create... (e.g., 'Advanced React Patterns' or 'Introduction to Quantum Physics')"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  rows={6}
-                  className="relative w-full px-6 py-4 bg-slate-800/50 border border-white/10 rounded-2xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 transition-all duration-300 resize-none text-slate-200 placeholder-slate-500 shadow-inner"
-                  required
-                  disabled={loading}
-                />
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3 px-4 py-2 rounded-full border border-neutral-800 bg-neutral-900/50">
+                <User className="w-4 h-4 text-neutral-400" />
+                <span className="text-sm text-neutral-300">{user?.email}</span>
               </div>
-
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full group relative overflow-hidden bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white py-4 px-8 rounded-2xl font-bold text-lg shadow-lg hover:shadow-purple-500/25 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                onClick={logout}
+                className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-600 via-purple-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <span className="relative flex items-center justify-center gap-3">
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                      <span>Generating Course...</span>
-                    </>
-                  ) : (
-                    <>
-                      <BookOpen className="w-6 h-6" />
-                      <span>Generate Course</span>
-                    </>
-                  )}
-                </span>
+                <LogOut className="w-5 h-5" />
               </button>
-            </form>
+            </div>
+          </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="mt-6 p-4 bg-red-500/10 border-l-4 border-red-500 rounded-r-xl animate-shake backdrop-blur-sm">
-                <div className="flex items-center gap-3">
+          {!course && !loading && (
+            <div className="text-center mb-16 animate-slide-up">
+              <h1 className="text-5xl font-bold text-white mb-6">What do you want to learn?</h1>
+              <p className="text-xl text-neutral-400 font-light">
+                Generate comprehensive, structured courses on any topic.
+              </p>
+            </div>
+          )}
+
+          {/* Input Area */}
+          {!course && !loading && (
+            <div className="max-w-2xl mx-auto animate-slide-up delay-100">
+              <form onSubmit={handleGenerate} className="relative group">
+                <div className="absolute -inset-1 bg-white/10 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                <div className="relative bg-neutral-900 border border-neutral-800 rounded-2xl p-2 shadow-2xl flex flex-col gap-2">
+                  <textarea
+                    placeholder="E.g. Advanced Python Patterns, History of Rome, Quantum Mechanics..."
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    className="w-full bg-transparent border-none text-white text-lg placeholder-neutral-600 focus:ring-0 resize-none p-4 min-h-[120px]"
+                    required
+                    disabled={loading}
+                  />
+                  <div className="flex justify-between items-center px-2 pb-2">
+                    <span className="text-xs text-neutral-600 uppercase font-medium tracking-widest">AI Generating Engine</span>
+                    <button
+                      type="submit"
+                      disabled={loading || !prompt.trim()}
+                      className="bg-white text-black px-6 py-2.5 rounded-xl font-bold hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <BookOpen className="w-5 h-5" />
+                      Generate
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {error && (
+                <div className="mt-8 p-4 bg-red-900/20 border border-red-900/50 text-red-200 rounded-xl flex items-center gap-3 justify-center animate-shake">
                   <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                  <p className="text-red-300 font-medium">Error: {error}</p>
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] animate-pulse">
+              <div className="relative mb-8">
+                <div className="w-24 h-24 border-4 border-neutral-800 border-t-white rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-white animate-pulse" />
                 </div>
               </div>
-            )}
-          </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Generating Course</h3>
+              <p className="text-neutral-500">{generationStatus}</p>
+            </div>
+          )}
 
-          {/* Course Renderer */}
-          {course && (
+          {/* Result View */}
+          {course && !generating && (
             <div className="animate-fade-in-up">
+              <div className="flex justify-between items-center mb-6">
+                <button
+                  onClick={() => { setCourse(null); setPrompt(""); }}
+                  className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors"
+                >
+                  <Plus className="w-4 h-4 rotate-45" /> Back to Generator
+                </button>
+              </div>
               <CourseRenderer course={course} />
             </div>
           )}
 
-          {/* Loading State - Shows progress message */}
-          {loading && (
-            <div className="mt-8 glass-card rounded-3xl p-8 animate-pulse text-center">
-              <div className="flex flex-col items-center justify-center space-y-6">
-                <div className="relative">
-                  <div className="w-20 h-20 border-4 border-slate-700 border-t-purple-500 rounded-full animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Sparkles className="w-8 h-8 text-purple-500 animate-pulse" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-2">Creating Your Course</h3>
-                  <p className="text-purple-300 font-medium animate-pulse">{generationStatus}</p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
