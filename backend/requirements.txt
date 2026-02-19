@@ -1,4 +1,4 @@
-﻿fastapi
+fastapi
 uvicorn[standard]
 pydantic
 passlib[bcrypt]
@@ -13,4 +13,4 @@ langchain-openai
 langchain-google-genai
 openai
 youtube-transcript-api
-langchain-ollama
+langchain-groq

@@ -1,42 +1,49 @@
 import json
+import os
 import re
 import logging
 from typing import Any, Dict, List, Optional, Union
 
 try:
-    from langchain_ollama import ChatOllama
+    from langchain_groq import ChatGroq
     from langchain_core.prompts import ChatPromptTemplate
 except ImportError:
-    ChatOllama = None
+    ChatGroq = None
     ChatPromptTemplate = None
 
 logger = logging.getLogger(__name__)
 
 class LLMClient:
     """
-    A unified client for interacting with Local LLMs (via Ollama) 
+    A unified client for interacting with Groq LLMs (via ChatGroq)
     with robust JSON parsing capabilities.
     """
 
-    def __init__(self, model: str = "llama3.1", temperature: float = 0.3):
+    def __init__(self, model: str = "compound-beta", temperature: float = 0.3):
         self.model_name = model
         self.temperature = temperature
         self._llm = None
         self._initialize_llm()
 
     def _initialize_llm(self) -> None:
-        """Initialize the ChatOllama instance if available."""
-        if ChatOllama:
+        """Initialize the ChatGroq instance if available."""
+        if ChatGroq:
+            api_key = os.getenv("GROQ_API_KEY")
+            if not api_key:
+                logger.error("GROQ_API_KEY environment variable is not set.")
+                self._llm = None
+                return
             try:
-                self._llm = ChatOllama(
+                self._llm = ChatGroq(
                     model=self.model_name,
-                    temperature=self.temperature
+                    temperature=self.temperature,
+                    api_key=api_key,
                 )
             except Exception as e:
-                logger.error(f"Failed to initialize ChatOllama: {e}")
+                logger.error(f"Failed to initialize ChatGroq: {e}")
                 self._llm = None
         else:
-            logger.warning("langchain_ollama library not installed or import failed. Ensure langchain-ollama is installed in the active environment.")
+            logger.warning("langchain_groq library not installed or import failed. Ensure langchain-groq is installed in the active environment.")
 
     @property
     def is_available(self) -> bool:
