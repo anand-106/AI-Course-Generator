@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-import { PlayCircle, ChevronDown, ChevronUp } from "lucide-react";
+import React from 'react';
+import { PlayCircle, ExternalLink } from "lucide-react";
 
-export function YouTubeEmbed({ link }) {
-    const [isExpanded, setIsExpanded] = useState(false);
-
+export function YouTubeEmbed({ link, title }) {
     try {
         const url = new URL(link);
         let videoId = url.searchParams.get("v");
@@ -14,12 +12,10 @@ export function YouTubeEmbed({ link }) {
             startTime = startTime.slice(0, -1);
         }
 
-        if (!videoId && url.hostname.includes("youtube.com") && url.pathname.startsWith("/watch")) {
-            videoId = url.searchParams.get("v");
-        }
         if (!videoId && url.hostname.includes("youtu.be")) {
             videoId = url.pathname.slice(1);
         }
+
         if (!videoId) return (
             <a
                 href={link}
@@ -32,38 +28,37 @@ export function YouTubeEmbed({ link }) {
             </a>
         );
 
-        const embedSrc = `https://www.youtube.com/embed/${videoId}?${startTime ? 'start=' + startTime + '&' : ''}${endTime ? 'end=' + endTime : ''}`;
+        const params = new URLSearchParams();
+        if (startTime) params.set('start', startTime);
+        if (endTime) params.set('end', endTime);
+        params.set('rel', '0');
+        const embedSrc = `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 
         return (
-            <div className="space-y-3">
-                <button
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg hover:shadow-xl group"
-                >
-                    <div className="flex items-center gap-3">
-                        <PlayCircle className="w-6 h-6" />
-                        <span className="font-semibold">Watch Video {startTime ? `(Starts at ${startTime}s)` : ''}</span>
-                    </div>
-                    {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                    ) : (
-                        <ChevronDown className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                    )}
-                </button>
-                {isExpanded && (
-                    <div className="relative w-full rounded-xl overflow-hidden shadow-lg animate-fade-in">
-                        <div className="aspect-video">
-                            <iframe
-                                width="100%"
-                                height="100%"
-                                src={embedSrc}
-                                title="YouTube video player"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowFullScreen
-                                className="absolute inset-0 w-full h-full"
-                            />
-                        </div>
+            <div className="rounded-2xl overflow-hidden border border-white/10 bg-neutral-900 shadow-lg">
+                <div className="aspect-video">
+                    <iframe
+                        width="100%"
+                        height="100%"
+                        src={embedSrc}
+                        title={title || "YouTube video player"}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="w-full h-full"
+                    />
+                </div>
+                {title && (
+                    <div className="px-4 py-3 flex items-center justify-between">
+                        <p className="text-sm text-neutral-300 font-medium truncate">{title}</p>
+                        <a
+                            href={link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-neutral-500 hover:text-white transition-colors flex-shrink-0 ml-3"
+                        >
+                            <ExternalLink className="w-4 h-4" />
+                        </a>
                     </div>
                 )}
             </div>

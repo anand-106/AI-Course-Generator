@@ -143,18 +143,21 @@ def node_generate_topics(state: CourseState) -> CourseState:
 
 def generate_module_content(topic: str) -> Dict[str, Any]:
     """Generates full content for a single module (public helper)."""
-    # Generate Subtopics First
     subtopics = _generate_subtopics(topic)
-    
-    # Gather Resources
-    videos = search_youtube_videos(f"{topic} tutorial", limit=3)
+
+    # 1 targeted video per subtopic (more relevant than N generic videos per module)
+    videos = []
+    for st in subtopics:
+        results = search_youtube_videos(f"{st} {topic} explained", limit=1)
+        if results:
+            videos.append(results[0])
+
     mermaid = generate_mermaid_for_topic(topic, subtopics)
-    
-    # Content generation
+
     explanations = generate_explanations_for_topic(topic, subtopics, videos, mermaid)
     flashcards = generate_flashcards_for_topic(topic, subtopics)
     quiz = generate_quiz_for_topic(topic, subtopics, num_questions=6)
-    
+
     return {
         "module_title": topic,
         "explanations": explanations,

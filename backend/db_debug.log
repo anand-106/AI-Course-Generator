@@ -87,3 +87,15 @@ Collection status: Available
 User: ananth@gmail.com
 [2026-02-18 04:34:19.186964] Successfully saved course f769a3bd-066f-4990-97ae-924c23cd99ef
 [2026-02-18 04:34:19.187845] Stream finished/closed for f769a3bd-066f-4990-97ae-924c23cd99ef
+[2026-02-19 04:50:12.742540] START request for d25a5f91-e677-406c-b551-db42681a19c7 user=ananth@gmail.com prompt=make a small course on java
+[2026-02-19 04:50:51.761917] Reached finalize_course for d25a5f91-e677-406c-b551-db42681a19c7
+Collection status: Available
+User: ananth@gmail.com
+[2026-02-19 04:50:51.914909] Successfully saved course d25a5f91-e677-406c-b551-db42681a19c7
+[2026-02-19 04:50:51.915518] Stream finished/closed for d25a5f91-e677-406c-b551-db42681a19c7
+[2026-02-19 04:52:55.458698] START request for a6ee27d7-30fa-4763-bae4-94b5c16b0e3d user=ananth@gmail.com prompt=make a small course on java
+[2026-02-19 04:53:30.198065] Reached finalize_course for a6ee27d7-30fa-4763-bae4-94b5c16b0e3d
+Collection status: Available
+User: ananth@gmail.com
+[2026-02-19 04:53:30.404054] Successfully saved course a6ee27d7-30fa-4763-bae4-94b5c16b0e3d
+[2026-02-19 04:53:30.404897] Stream finished/closed for a6ee27d7-30fa-4763-bae4-94b5c16b0e3d

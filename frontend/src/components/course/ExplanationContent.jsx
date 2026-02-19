@@ -34,7 +34,7 @@ function RichTextRenderer({ text, videos, mermaid }) {
                     <div className="flex items-center gap-2 mb-2 text-red-400 font-semibold text-sm">
                         <PlayCircle className="w-4 h-4" /> Video Tutorial
                     </div>
-                    <YouTubeEmbed link={video.link} />
+                    <YouTubeEmbed link={video.link} title={video.title} />
                 </div>
             );
         }
@@ -70,7 +70,7 @@ function RichTextRenderer({ text, videos, mermaid }) {
                             </div>
                             <div className="grid gap-4 md:grid-cols-2">
                                 {unusedVideos.map((video, i) => (
-                                    <YouTubeEmbed key={`fallback-vid-${i}`} link={video.link} />
+                                    <YouTubeEmbed key={`fallback-vid-${i}`} link={video.link} title={video.title} />
                                 ))}
                             </div>
                         </div>
