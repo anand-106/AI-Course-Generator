@@ -3,6 +3,8 @@ import { BookOpen, Share2, MoreHorizontal } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { ModuleCard } from "./course/ModuleCard";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+
 export default function CourseRenderer({ course }) {
   const { getAuthHeaders } = useAuth();
   const [localCourse, setLocalCourse] = useState(course);
@@ -30,7 +32,7 @@ export default function CourseRenderer({ course }) {
     // Save progress to DB
     if (currentModuleTitle) {
       try {
-        await fetch(`http://localhost:8000/course/${courseId}/progress`, {
+        await fetch(`${API_BASE}/course/${courseId}/progress`, {
           method: 'POST',
           headers: {
             ...getAuthHeaders(),
@@ -50,7 +52,7 @@ export default function CourseRenderer({ course }) {
     if (moduleIndex === moduleEntries.length - 1 && courseId) {
       setGeneratingNext(true);
       try {
-        const response = await fetch(`http://localhost:8000/course/${courseId}/generate_next_module`, {
+        const response = await fetch(`${API_BASE}/course/${courseId}/generate_next_module`, {
           method: 'POST',
           headers: getAuthHeaders()
         });
