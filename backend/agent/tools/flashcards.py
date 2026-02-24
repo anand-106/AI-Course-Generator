@@ -12,16 +12,16 @@ def generate_flashcards_for_topic(topic: str, subtopics: List[str]) -> List[Dict
     """
     
     system_prompt = """
-    You are an expert technical educator creating practical flashcards for spaced repetition learning.
+    You are an expert educator creating practical flashcards for spaced repetition learning.
     Return JSON only.
     
     Create 5-8 high-quality, concept-based flashcards for the given topic.
     
     RULES:
     1. Avoid generic "What is X?" questions unless X is a complex concept.
-    2. Focus on "How to..." or "Scenario" based questions.
-       - Example: "How to declare an integer in Python?" -> "x = 5 (or int variable)"
-       - Example: "Command to install a package?" -> "pip install <package>"
+    2. Focus on "How to...", "Scenario", or "Key Fact" based questions.
+       - Example: "Who was the first president of the USA?" -> "George Washington"
+       - Example: "Primary cause of photosynthesis?" -> "Sunlight, Water, and Carbon Dioxide"
     3. Ensure the Front is a clear question or prompt, and the Back is the direct answer.
     4. If the topic includes "Module X:", ignore the prefix and focus on the actual content.
     5. Do NOT reference the module title itself as a question (e.g., "What is Module 1?").

@@ -16,10 +16,10 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str], videos: Li
     video_context = "\n".join([f"Video {i}: {v.get('title', 'Video')} (ID: {i})" for i, v in enumerate(videos)])
     
     system_prompt = """
-    You are an expert technical instructor. 
+    You are an expert instructor. 
     
     TASK:
-    For each subtopic provided, write a DEEP, TECHNICAL, and COMPREHENSIVE explanation.
+    For each subtopic provided, write a DEEP and COMPREHENSIVE explanation.
     You MUST integrate visual aids (Videos and Diagrams) directly into the text where they are most relevant.
     
     AVAILABLE RESOURCES:
@@ -31,9 +31,9 @@ def generate_explanations_for_topic(topic: str, subtopics: List[str], videos: Li
     REQUIREMENTS:
     1. Length: 200-300 words per subtopic.
     2. Content: 
-       - Start with a clear, technical definition.
+       - Start with a clear definition.
        - Explain the "Why" and "How" in detail.
-       - Include code snippets or syntax examples where applicable.
+       - Include relevant examples, case studies, or (if the subject is technical) code/syntax.
        - Provide a real-world use case.
     3. **Embedding Visuals**:
        - You MUST insert the tag `[[MERMAID]]` in exactly ONE subtopic where the visual flow is most helpful.

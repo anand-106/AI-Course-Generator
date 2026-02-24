@@ -24,7 +24,7 @@ def generate_quiz_for_topic(topic: str, subtopics: List[str], num_questions: int
     Return JSON only. No markdown. No code fences.
     
     CRITICAL RULES:
-    - Questions MUST test knowledge of the ACTUAL SUBJECT CONTENT (facts, concepts, syntax, procedures, examples)
+    - Questions MUST test knowledge of the ACTUAL SUBJECT CONTENT (facts, concepts, procedures, examples, or syntax if technical)
     - DO NOT mention "Module", "studying", "learning goals", "course structure", or "completing module"
     - DO NOT ask "What is a key concept covered in..." or "What should you understand after..."
     - Questions should be about THE SUBJECT ITSELF, not about the course structure or learning process
@@ -36,7 +36,7 @@ def generate_quiz_for_topic(topic: str, subtopics: List[str], num_questions: int
     - Exactly one option is correct.
     - Provide answer_index as an integer 0-3.
     - Provide a short explanation (1-2 sentences) explaining why the answer is correct.
-    - Make questions test specific facts, concepts, syntax, or skills from the subject matter.
+    - Make questions test specific facts, concepts, or skills from the subject matter.
     
     Return ONLY a JSON array in this exact shape:
     [
