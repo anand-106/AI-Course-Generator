@@ -7,11 +7,8 @@ from langgraph.graph import StateGraph, END
 
 # Import Tools
 from agent.tools import (
-    generate_explanations_for_topic,
     search_youtube_videos,
     generate_mermaid_for_topic,
-    generate_flashcards_for_topic,
-    generate_quiz_for_topic,
 )
 from agent.llm import LLMClient
 
@@ -154,9 +151,12 @@ def generate_module_content(topic: str) -> Dict[str, Any]:
 
     mermaid = generate_mermaid_for_topic(topic, subtopics)
 
-    explanations = generate_explanations_for_topic(topic, subtopics, videos, mermaid)
-    flashcards = generate_flashcards_for_topic(topic, subtopics)
-    quiz = generate_quiz_for_topic(topic, subtopics, num_questions=6)
+    # Single LLM call per module to get explanations, flashcards, and quiz together
+    package = _generate_module_package(topic, subtopics, videos, mermaid)
+
+    explanations = package.get("explanations")
+    flashcards = package.get("flashcards")
+    quiz = package.get("quiz")
 
     return {
         "module_title": topic,
@@ -164,7 +164,7 @@ def generate_module_content(topic: str) -> Dict[str, Any]:
         "videos": videos,
         "mermaid": mermaid,
         "flashcards": flashcards,
-        "quiz": quiz
+        "quiz": quiz,
     }
 
 
@@ -201,6 +201,117 @@ def node_finalize_course(state: CourseState) -> CourseState:
 # -------------------------------------------------------------------
 # HELPERS
 # -------------------------------------------------------------------
+
+
+def _generate_module_package(
+    topic: str,
+    subtopics: List[str],
+    videos: List[Dict[str, Any]],
+    mermaid_code: str,
+) -> Dict[str, Any]:
+    """
+    Use a single LLM call to generate explanations, flashcards, and quiz
+    content for a module.
+    """
+    video_context = "\n".join(
+        [f"Video {i}: {v.get('title', 'Video')}" for i, v in enumerate(videos)]
+    ) or "No videos available."
+
+    system_prompt = """
+You are an expert technical instructor and assessment designer.
+You create deep explanations, practical flashcards, and rigorous quizzes.
+
+TASK:
+- For the given module topic and its subtopics, generate:
+  1) Detailed explanations per subtopic (with optional [[MERMAID]] and [[VIDEO_i]] tags)
+  2) 5–8 spaced-repetition flashcards
+  3) 6 multiple-choice quiz questions
+
+AVAILABLE RESOURCES:
+- Topic: {topic}
+- Subtopics: {subtopics}
+- Videos (for reference only, do NOT invent new IDs):
+{video_context}
+- Diagram: Mermaid diagram describing the concept flow is available.
+
+EXPLANATIONS REQUIREMENTS:
+- 200–300 words per subtopic
+- Start with a clear definition
+- Explain the WHY and HOW in detail
+- Include examples or code/syntax where relevant
+- Use [[MERMAID]] tag in exactly ONE subtopic where a visual flow helps most
+- Use [[VIDEO_0]], [[VIDEO_1]], etc. inline where the corresponding video is most relevant
+
+FLASHCARDS REQUIREMENTS:
+- 5–8 items
+- JSON array of objects: {{ "front": "...", "back": "..." }}
+- Focus on "How to...", scenarios, or key facts
+- Avoid meta-questions about modules or studying (no "What is covered in this module?")
+
+QUIZ REQUIREMENTS:
+- 6 questions testing SUBJECT MATTER knowledge (facts, concepts, syntax, procedures)
+- Each question: exactly 4 options, exactly 1 correct
+- Fields: "question", "options" (4 strings), "answer_index" (0–3), "explanation" (1–2 sentences)
+- Do NOT talk about learning goals, modules, or studying; ONLY the subject itself.
+
+OUTPUT FORMAT (JSON ONLY, NO MARKDOWN, NO COMMENTS):
+{{
+  "explanations": {{
+    "Subtopic 1": "Full text with [[MERMAID]] / [[VIDEO_i]] tags...",
+    "Subtopic 2": "..."
+  }},
+  "flashcards": [
+    {{ "front": "...", "back": "..." }}
+  ],
+  "quiz": [
+    {{ "question": "...", "options": ["A","B","C","D"], "answer_index": 0, "explanation": "..." }}
+  ]
+}}
+""".strip()
+
+    human_prompt = (
+        "Generate explanations, flashcards, and quiz content for:\n"
+        "Topic: {topic}\n"
+        "Subtopics: {subtopics}\n"
+        "Return ONLY the JSON object with keys 'explanations', 'flashcards', and 'quiz'."
+    )
+
+    resp = llm_client.invoke(
+        system_prompt=system_prompt,
+        human_prompt_template=human_prompt,
+        input_vars={
+            "topic": topic,
+            "subtopics": ", ".join(subtopics),
+            "video_context": video_context,
+        },
+        require_json=True,
+    )
+
+    if isinstance(resp, dict):
+        # Basic normalization to avoid crashes if some keys are missing
+        pkg: Dict[str, Any] = {}
+        explanations = resp.get("explanations")
+        if isinstance(explanations, dict):
+            pkg["explanations"] = explanations
+
+        flashcards = resp.get("flashcards")
+        if isinstance(flashcards, list):
+            pkg["flashcards"] = flashcards
+
+        quiz = resp.get("quiz")
+        if isinstance(quiz, list):
+            pkg["quiz"] = quiz
+
+        return pkg
+
+    # Fallback: empty structures to keep the pipeline robust
+    logger.warning(f"Module package generation failed for topic '{topic}'. Using empty content.")
+    return {
+        "explanations": {},
+        "flashcards": [],
+        "quiz": [],
+    }
+
 
 def _generate_subtopics(topic: str) -> List[str]:
     resp = llm_client.invoke(

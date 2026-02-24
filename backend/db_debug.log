@@ -111,3 +111,9 @@ Collection status: Available
 User: ananth@gmail.com
 [2026-02-24 16:57:22.897754] Successfully saved course 0d6b0827-ddcd-46f1-beba-8b288b0a60f9
 [2026-02-24 16:57:22.902123] Stream finished/closed for 0d6b0827-ddcd-46f1-beba-8b288b0a60f9
+[2026-02-24 17:11:59.360343] START request for 6b570cf1-cbad-4177-bdef-91829722f8b1 user=ananth@gmail.com prompt=create a course on quantum physics
+[2026-02-24 17:13:09.417586] Reached finalize_course for 6b570cf1-cbad-4177-bdef-91829722f8b1
+Collection status: Available
+User: ananth@gmail.com
+[2026-02-24 17:13:29.199636] Successfully saved course 6b570cf1-cbad-4177-bdef-91829722f8b1
+[2026-02-24 17:13:29.200364] Stream finished/closed for 6b570cf1-cbad-4177-bdef-91829722f8b1
