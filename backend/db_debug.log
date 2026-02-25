@@ -225,3 +225,15 @@ Collection status: Available
 User: ananth@gmail.com
 [2026-02-25 03:14:51.003784] Successfully saved course afc7e124-f94e-467d-9b09-cac6f547562b
 [2026-02-25 03:14:51.005969] Stream finished/closed for afc7e124-f94e-467d-9b09-cac6f547562b
+[2026-02-25 03:24:28.814658] START request for cabde0e3-5836-4bce-b427-0ecf2225d398 user=ananth@gmail.com prompt=make a small course in organic chemistry
+[2026-02-25 03:25:02.750046] Reached finalize_course for cabde0e3-5836-4bce-b427-0ecf2225d398
+Collection status: Available
+User: ananth@gmail.com
+[2026-02-25 03:25:02.894521] Successfully saved course cabde0e3-5836-4bce-b427-0ecf2225d398
+[2026-02-25 03:25:02.896299] Stream finished/closed for cabde0e3-5836-4bce-b427-0ecf2225d398
+[2026-02-25 03:31:16.234454] START request for aea8af38-4e53-479e-93ca-7e6b8aeed7e7 user=ananth@gmail.com prompt=make a small course in organic chemistry
+[2026-02-25 03:31:57.365844] Reached finalize_course for aea8af38-4e53-479e-93ca-7e6b8aeed7e7
+Collection status: Available
+User: ananth@gmail.com
+[2026-02-25 03:31:57.586728] Successfully saved course aea8af38-4e53-479e-93ca-7e6b8aeed7e7
+[2026-02-25 03:31:57.588700] Stream finished/closed for aea8af38-4e53-479e-93ca-7e6b8aeed7e7

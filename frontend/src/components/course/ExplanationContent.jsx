@@ -44,37 +44,25 @@ function RichTextRenderer({ text, videos, mermaid }) {
     });
 
     const unusedVideos = videos ? videos.filter((_, idx) => !usedVideoIndices.has(idx)) : [];
-    const showMermaidFallback = mermaid && !mermaidUsed;
 
     return (
         <div className="space-y-4 text-slate-300 leading-relaxed">
             {renderedContent}
 
-            {(unusedVideos.length > 0 || showMermaidFallback) && (
+            {unusedVideos.length > 0 && (
                 <div className="mt-8 pt-8 border-t border-white/10 space-y-8">
                     <h4 className="text-lg font-semibold text-slate-400 uppercase tracking-widest text-xs">Additional Resources</h4>
 
-                    {showMermaidFallback && (
-                        <div>
-                            <div className="flex items-center gap-2 mb-4 text-teal-400 font-semibold">
-                                <Layers className="w-5 h-5" /> Visual Flow
-                            </div>
-                            <MermaidBlock code={mermaid} idSuffix="fallback" />
+                    <div>
+                        <div className="flex items-center gap-2 mb-4 text-red-400 font-semibold">
+                            <PlayCircle className="w-5 h-5" /> Related Videos
                         </div>
-                    )}
-
-                    {unusedVideos.length > 0 && (
-                        <div>
-                            <div className="flex items-center gap-2 mb-4 text-red-400 font-semibold">
-                                <PlayCircle className="w-5 h-5" /> Related Videos
-                            </div>
-                            <div className="grid gap-4 md:grid-cols-2">
-                                {unusedVideos.map((video, i) => (
-                                    <YouTubeEmbed key={`fallback-vid-${i}`} link={video.link} title={video.title} />
-                                ))}
-                            </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {unusedVideos.map((video, i) => (
+                                <YouTubeEmbed key={`fallback-vid-${i}`} link={video.link} title={video.title} />
+                            ))}
                         </div>
-                    )}
+                    </div>
                 </div>
             )}
         </div>

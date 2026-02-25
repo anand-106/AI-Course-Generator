@@ -13,14 +13,23 @@ async function ensureMermaid() {
 
         mermaid.initialize({
             startOnLoad: false,
-            theme: 'default',
+            theme: 'dark',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
             themeVariables: {
                 primaryColor: '#3b82f6',
-                primaryTextColor: '#fff',
+                primaryTextColor: '#ffffff',
                 primaryBorderColor: '#2563eb',
-                lineColor: '#1e40af',
-                secondaryColor: '#60a5fa',
-                tertiaryColor: '#dbeafe'
+                lineColor: '#60a5fa',
+                secondaryColor: '#1e293b',
+                tertiaryColor: '#0f172a',
+                mainBkg: '#0f172a',
+                nodeBorder: '#334155',
+                clusterBkg: '#1e293b',
             }
         });
         mermaidInstance = mermaid;

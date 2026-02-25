@@ -166,29 +166,23 @@ def generate_module_content(topic: str) -> Dict[str, Any]:
     """Generates full content for a single module (public helper)."""
     subtopics = _generate_subtopics(topic)
 
-    # 1 targeted video per subtopic (more relevant than N generic videos per module)
+    # 1 targeted video per subtopic
     videos = []
     for st in subtopics:
         results = search_youtube_videos(f"{st} {topic} explained", limit=1)
         if results:
             videos.append(results[0])
 
-    mermaid = generate_mermaid_for_topic(topic, subtopics)
-
-    # Single LLM call per module to get explanations, flashcards, and quiz together
-    package = _generate_module_package(topic, subtopics, videos, mermaid)
-
-    explanations = package.get("explanations")
-    flashcards = package.get("flashcards")
-    quiz = package.get("quiz")
+    # Single LLM call per module to get everything, including the diagram
+    package = _generate_module_package(topic, subtopics, videos)
 
     return {
         "module_title": topic,
-        "explanations": explanations,
+        "explanations": package.get("explanations", {}),
         "videos": videos,
-        "mermaid": mermaid,
-        "flashcards": flashcards,
-        "quiz": quiz,
+        "mermaid": package.get("mermaid", ""),
+        "flashcards": package.get("flashcards", []),
+        "quiz": package.get("quiz", []),
     }
 
 
@@ -197,16 +191,11 @@ def node_generate_module(state: CourseState) -> CourseState:
         return state
     
     current_topic = state["pending_topics"].pop(0)
-    
-    # Reuse the helper
     state["generated_modules"][current_topic] = generate_module_content(current_topic)
-    
     return state
 
 
-
 def node_finalize_course(state: CourseState) -> CourseState:
-    # Organize based on original topics order
     ordered_modules = {
         topic: state["generated_modules"][topic]
         for topic in state["topics"]
@@ -222,20 +211,14 @@ def node_finalize_course(state: CourseState) -> CourseState:
     return state
 
 
-# -------------------------------------------------------------------
-# HELPERS
-# -------------------------------------------------------------------
-
-
 def _generate_module_package(
     topic: str,
     subtopics: List[str],
     videos: List[Dict[str, Any]],
-    mermaid_code: str,
 ) -> Dict[str, Any]:
     """
-    Use a single LLM call to generate explanations, flashcards, and quiz
-    content for a module.
+    Use a single LLM call to generate explanations, flashcards, quiz, 
+    and a custom Mermaid diagram for a module.
     """
     video_context = "\n".join(
         [f"Video {i}: {v.get('title', 'Video')}" for i, v in enumerate(videos)]
@@ -243,53 +226,57 @@ def _generate_module_package(
 
     system_prompt = """
 You are an expert technical instructor and assessment designer.
-You create deep explanations, practical flashcards, and rigorous quizzes.
+You create deep explanations, practical flashcards, rigorous quizzes, and detailed diagrams.
 
 TASK:
 - For the given module topic and its subtopics, generate:
   1) Detailed explanations per subtopic (with optional [[MERMAID]] and [[VIDEO_i]] tags)
   2) 5–8 spaced-repetition flashcards
   3) 6 multiple-choice quiz questions
+  4) Exactly ONE Mermaid diagram (graph LR) that visually explains the core process or logic of this module.
 
 AVAILABLE RESOURCES:
 - Topic: {topic}
 - Subtopics: {subtopics}
 - Videos (for reference only, do NOT invent new IDs):
 {video_context}
-- Diagram: Mermaid diagram describing the concept flow is available.
 
 EXPLANATIONS REQUIREMENTS:
-- 200–300 words per subtopic
-- Start with a clear definition
-- Explain the WHY and HOW in detail
-- Include examples or code/syntax where relevant
-- Use [[MERMAID]] tag in exactly ONE subtopic where a visual flow helps most
-- Use [[VIDEO_0]], [[VIDEO_1]], etc. inline where the corresponding video is most relevant
+- DO NOT summarize. Expand every concept thoroughly, even small subtopics.
+- Tone: Educational, textbook-level, but clear and readable.
+- For EACH subtopic, follow this strict structure:
+  1. Concept Overview: In-depth definition and fundamental essence.
+  2. Historical/Conceptual Background: Why this exists and its origin (if relevant).
+  3. Detailed Technical Explanation: Deep dive into the mechanics (HOW it works).
+  4. Step-by-Step Working: Process breakdown or logical sequence.
+  5. Practical Examples: Simple analogies and real-world scenarios.
+  6. Real-World Applications: Where is this used in industry or life?
+  7. Common Mistakes or Confusions: Edge cases and misconceptions.
+  8. Summary Recap: A concise wrap-up (only after the full explanation).
+- Include code, syntax, or formal logic where applicable.
+- Use [[MERMAID]] tag in exactly ONE subtopic to place the diagram.
+- Use [[VIDEO_0]], [[VIDEO_1]], etc. inline where specific video context is relevant.
+- Prefer completeness over brevity. No length limit.
+
+DIAGRAM REQUIREMENTS:
+- Format: Mermaid.js (graph LR)
+- Content: Must be specific to this module's logic, not a generic overview.
+- Styling: Use 'style' commands for colors (e.g., style NodeA fill:#f96).
 
 FLASHCARDS REQUIREMENTS:
 - 5–8 items
-- JSON array of objects: {{ "front": "...", "back": "..." }}
-- Focus on "How to...", scenarios, or key facts
-- Avoid meta-questions about modules or studying (no "What is covered in this module?")
+- JSON array: {{ "front": "...", "back": "..." }}
 
 QUIZ REQUIREMENTS:
-- 6 questions testing SUBJECT MATTER knowledge (facts, concepts, syntax, procedures)
-- Each question: exactly 4 options, exactly 1 correct
-- Fields: "question", "options" (4 strings), "answer_index" (0–3), "explanation" (1–2 sentences)
-- Do NOT talk about learning goals, modules, or studying; ONLY the subject itself.
+- 6 questions testing SUBJECT MATTER knowledge.
+- Fields: "question", "options" (4), "answer_index" (0-3), "explanation".
 
-OUTPUT FORMAT (JSON ONLY, NO MARKDOWN, NO COMMENTS):
+OUTPUT FORMAT (JSON ONLY, NO MARKDOWN):
 {{
-  "explanations": {{
-    "Subtopic 1": "Full text with [[MERMAID]] / [[VIDEO_i]] tags...",
-    "Subtopic 2": "..."
-  }},
-  "flashcards": [
-    {{ "front": "...", "back": "..." }}
-  ],
-  "quiz": [
-    {{ "question": "...", "options": ["A","B","C","D"], "answer_index": 0, "explanation": "..." }}
-  ]
+  "explanations": {{ "Subtopic": "..." }},
+  "flashcards": [ ... ],
+  "quiz": [ ... ],
+  "mermaid": "graph LR\\n    A[Step 1] --> B[Step 2]..."
 }}
 """.strip()
 
@@ -312,28 +299,15 @@ OUTPUT FORMAT (JSON ONLY, NO MARKDOWN, NO COMMENTS):
     )
 
     if isinstance(resp, dict):
-        # Basic normalization to avoid crashes if some keys are missing
-        pkg: Dict[str, Any] = {}
-        explanations = resp.get("explanations")
-        if isinstance(explanations, dict):
-            pkg["explanations"] = explanations
+        return resp
 
-        flashcards = resp.get("flashcards")
-        if isinstance(flashcards, list):
-            pkg["flashcards"] = flashcards
-
-        quiz = resp.get("quiz")
-        if isinstance(quiz, list):
-            pkg["quiz"] = quiz
-
-        return pkg
-
-    # Fallback: empty structures to keep the pipeline robust
-    logger.warning(f"Module package generation failed for topic '{topic}'. Using empty content.")
+    # Fallback
+    logger.warning(f"Module package generation failed for topic '{topic}'.")
     return {
         "explanations": {},
         "flashcards": [],
         "quiz": [],
+        "mermaid": "",
     }
 
 
