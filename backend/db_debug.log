@@ -117,3 +117,111 @@ Collection status: Available
 User: ananth@gmail.com
 [2026-02-24 17:13:29.199636] Successfully saved course 6b570cf1-cbad-4177-bdef-91829722f8b1
 [2026-02-24 17:13:29.200364] Stream finished/closed for 6b570cf1-cbad-4177-bdef-91829722f8b1
+[2026-02-25 03:08:11.127304] START request for 13d97104-c831-414d-b36b-869c142e7e35 user=ananth@gmail.com prompt=make a course in quantum mechanics
+[2026-02-25 03:08:41.670179] Reached finalize_course for 13d97104-c831-414d-b36b-869c142e7e35
+Collection status: Available
+User: ananth@gmail.com
+[2026-02-25 03:08:41.854143] Successfully saved course 13d97104-c831-414d-b36b-869c142e7e35
+[2026-02-25 03:08:41.856601] Stream finished/closed for 13d97104-c831-414d-b36b-869c142e7e35
+[2026-02-25 03:12:03.378881] START request for 75bb63b7-3714-4e72-8335-b1811dae4649 user=ananth@gmail.com prompt=make a small course on advanced python patterns
+[2026-02-25 03:12:05.834403] ERROR in stream for 75bb63b7-3714-4e72-8335-b1811dae4649: name 're' is not defined
+Traceback (most recent call last):
+  File "C:\Users\ANANTH KRISHNAN\OneDrive\Desktop\PROJECTS\AI-Course-Generator-MAIN\backend\routers\course.py", line 45, in event_generator
+    async for chunk in run_workflow_stream(req.prompt, single_step=True):
+    ...<88 lines>...
+                }) + "\n"
+  File "C:\Users\ANANTH KRISHNAN\OneDrive\Desktop\PROJECTS\AI-Course-Generator-MAIN\backend\agent\agent.py", line 419, in run_workflow_stream
+    async for event in workflow.astream(initial_state, stream_mode="updates"):
+        yield event
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\pregel\main.py", line 2971, in astream
+    async for _ in runner.atick(
+    ...<13 lines>...
+            yield o
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\pregel\_runner.py", line 304, in atick
+    await arun_with_retry(
+    ...<15 lines>...
+    )
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\pregel\_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\_internal\_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+        step.ainvoke(input, config, **kwargs), context=context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\_internal\_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langchain_core\runnables\config.py", line 610, in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\concurrent\futures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langchain_core\runnables\config.py", line 601, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\ANANTH KRISHNAN\OneDrive\Desktop\PROJECTS\AI-Course-Generator-MAIN\backend\agent\agent.py", line 132, in node_enhance_prompt
+    title = re.sub(r'^(Course Title|Title):\s*', '', title, flags=re.IGNORECASE)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+During task with name 'enhance_prompt' and id 'b260177b-a324-b73a-bfac-5d6b0a14c117'
+
+[2026-02-25 03:12:05.842068] Stream finished/closed for 75bb63b7-3714-4e72-8335-b1811dae4649
+[2026-02-25 03:13:28.181528] START request for 9d4559f7-cc01-499f-8150-f110f925407f user=ananth@gmail.com prompt=make a small course on advanced python patterns
+[2026-02-25 03:13:31.113234] ERROR in stream for 9d4559f7-cc01-499f-8150-f110f925407f: name 're' is not defined
+Traceback (most recent call last):
+  File "C:\Users\ANANTH KRISHNAN\OneDrive\Desktop\PROJECTS\AI-Course-Generator-MAIN\backend\routers\course.py", line 45, in event_generator
+    async for chunk in run_workflow_stream(req.prompt, single_step=True):
+    ...<88 lines>...
+                }) + "\n"
+  File "C:\Users\ANANTH KRISHNAN\OneDrive\Desktop\PROJECTS\AI-Course-Generator-MAIN\backend\agent\agent.py", line 419, in run_workflow_stream
+    async for event in workflow.astream(initial_state, stream_mode="updates"):
+        yield event
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\pregel\main.py", line 2971, in astream
+    async for _ in runner.atick(
+    ...<13 lines>...
+            yield o
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\pregel\_runner.py", line 304, in atick
+    await arun_with_retry(
+    ...<15 lines>...
+    )
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\pregel\_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\_internal\_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+        step.ainvoke(input, config, **kwargs), context=context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langgraph\_internal\_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langchain_core\runnables\config.py", line 610, in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\concurrent\futures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\ANANTH KRISHNAN\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\langchain_core\runnables\config.py", line 601, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\ANANTH KRISHNAN\OneDrive\Desktop\PROJECTS\AI-Course-Generator-MAIN\backend\agent\agent.py", line 132, in node_enhance_prompt
+    title = re.sub(r'^(Course Title|Title):\s*', '', title, flags=re.IGNORECASE)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+During task with name 'enhance_prompt' and id '38ba9850-f34c-e47d-72ea-930d3e1cd2bf'
+
+[2026-02-25 03:13:31.122646] Stream finished/closed for 9d4559f7-cc01-499f-8150-f110f925407f
+[2026-02-25 03:14:22.520229] START request for afc7e124-f94e-467d-9b09-cac6f547562b user=ananth@gmail.com prompt=make a small course on advanced python patterns
+[2026-02-25 03:14:50.893096] Reached finalize_course for afc7e124-f94e-467d-9b09-cac6f547562b
+Collection status: Available
+User: ananth@gmail.com
+[2026-02-25 03:14:51.003784] Successfully saved course afc7e124-f94e-467d-9b09-cac6f547562b
+[2026-02-25 03:14:51.005969] Stream finished/closed for afc7e124-f94e-467d-9b09-cac6f547562b

@@ -1,5 +1,6 @@
 from typing import Dict, List, Any, AsyncIterator, Optional
 import logging
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -59,13 +60,26 @@ Respond with ONLY a JSON object:
 """
 
 PROMPT_ENHANCER_SYS = "You are a senior instructional designer."
-PROMPT_ENHANCER_USER = "Generate a concise professional course title (max 7 words) for: {prompt}. Return ONLY the title text. No 'Here is'. No quotes."
+PROMPT_ENHANCER_USER = """
+Generate a very short, precise, and professional course title (2-4 words) for: {prompt}.
+
+STRICT RULES:
+1. Return ONLY the title text itself.
+2. DO NOT include "Course Title:", "Title:", or any prefix.
+3. DO NOT include "Reasoning", "Brevity", or any explanation of your thought process.
+4. DO NOT use bolding or markdown.
+5. NO quotes.
+
+Example of GOOD output: Quantum Mechanics Fundamentals
+Example of BAD output: Course Title: Quantum Mechanics. Reasoning: I chose this because...
+""".strip()
 
 PROMPT_TOPICS_SYS = "You are an expert curriculum architect. Return raw JSON array only."
 PROMPT_TOPICS_USER = """
 Design a complete course for "{title}".
 Requirements:
 - 8–12 modules
+- Short and precise module titles (max 5 words)
 - Progressive difficulty
 - Industry-relevant
 - Each module should be clearly distinct
@@ -112,7 +126,17 @@ def node_enhance_prompt(state: CourseState) -> CourseState:
         require_json=False
     )
     
-    state["enhanced_prompt"] = resp if resp else state["prompt"]
+    title = resp if resp else state["prompt"]
+    
+    # Post-process to ensure no junk text leaked through
+    # 1. Strip "Course Title:" or "Title:" prefix
+    title = re.sub(r'^(Course Title|Title):\s*', '', title, flags=re.IGNORECASE)
+    # 2. Strip anything starting with "**Reasoning**" or "Reasoning:"
+    title = re.split(r'\n|Reasoning:', title, flags=re.IGNORECASE)[0]
+    # 3. Clean markdown bolding
+    title = title.replace("**", "").replace("__", "").strip()
+    
+    state["enhanced_prompt"] = title
     return state
 
 
