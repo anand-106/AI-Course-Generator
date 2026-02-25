@@ -10,39 +10,45 @@ export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNex
 
     return (
         <div
-            className="group bg-black border border-neutral-800 rounded-3xl overflow-hidden animate-slide-up transition-all duration-300 hover:border-neutral-700"
+            className="group bg-[#0A0A0A] border border-white/5 rounded-[2rem] overflow-hidden animate-slide-up transition-all duration-500 hover:border-white/10 shadow-2xl"
             style={{ animationDelay: `${index * 100}ms` }}
         >
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full px-8 py-6 flex items-center justify-between group-hover:bg-neutral-900/30 transition-colors"
+                className="w-full px-10 py-8 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
             >
-                <div className="flex items-center gap-6">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl bg-neutral-900 text-white border border-neutral-800">
-                        {index + 1}
+                <div className="flex items-center gap-8">
+                    <div className="relative flex-shrink-0">
+                        <div className="w-14 h-14 rounded-2xl bg-white text-black flex items-center justify-center font-black text-2xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                            {index + 1}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-black flex items-center justify-center">
+                            {quizCompleted && <Check className="w-3 h-3 text-white" strokeWidth={4} />}
+                        </div>
                     </div>
                     <div className="text-left">
-                        <h2 className="text-2xl font-bold text-white group-hover:text-neutral-200 transition-colors">{title}</h2>
-                        <p className="text-neutral-500 text-sm mt-1">
-                            {isExpanded ? 'Click to collapse' : 'Click to expand module'}
-                        </p>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2 block">Module {index + 1}</span>
+                        <h2 className="text-3xl font-black text-white leading-tight tracking-tight group-hover:text-blue-400 transition-colors">{title}</h2>
                     </div>
                 </div>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border border-neutral-800 transition-transform duration-300 ${isExpanded ? 'rotate-180 bg-white text-black' : 'text-neutral-500 group-hover:bg-white group-hover:text-black'}`}>
-                    <ChevronDown className="w-5 h-5" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center border border-white/10 transition-all duration-500 ${isExpanded ? 'rotate-180 bg-white text-black border-transparent' : 'text-slate-500 hover:border-white/20'}`}>
+                    <ChevronDown className="w-6 h-6" />
                 </div>
             </button>
 
             {isExpanded && (
-                <div className="p-8 border-t border-neutral-900 bg-neutral-950/50 space-y-10 animate-fade-in">
-
-                    {/* Content Section */}
+                <div className="px-10 pb-12 pt-4 space-y-16 animate-fade-in">
+                    {/* Main Content Area */}
                     {data.explanations && (
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-                                <FileText className="w-5 h-5 text-white" />
-                                <h3 className="text-lg font-bold text-white uppercase tracking-wider">Core Knowledge</h3>
+                        <div className="space-y-10">
+                            <div className="flex items-center gap-4">
+                                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/5 bg-white/5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                                    <FileText className="w-3 h-3" /> Advanced Learning
+                                </div>
+                                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
                             </div>
+
                             <ExplanationContent
                                 content={data.explanations}
                                 videos={data.videos}
@@ -51,53 +57,65 @@ export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNex
                         </div>
                     )}
 
-                    {/* Flashcards Section */}
-                    {data.flashcards && data.flashcards.length > 0 && (
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-                                <Layers className="w-5 h-5 text-white" />
-                                <h3 className="text-lg font-bold text-white uppercase tracking-wider">Flashcards</h3>
-                            </div>
-                            <Flashcards cards={data.flashcards} />
-                        </div>
-                    )}
-
-                    {/* Quiz Section */}
-                    {data.quiz && Array.isArray(data.quiz) && data.quiz.length > 0 && (
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-                                <HelpCircle className="w-5 h-5 text-white" />
-                                <h3 className="text-lg font-bold text-white uppercase tracking-wider">Assessment</h3>
-                                <span className="text-xs px-2 py-1 bg-neutral-800 rounded text-neutral-400">{data.quiz.length} Questions</span>
-                            </div>
-
-                            <Quiz
-                                questions={data.quiz}
-                                onComplete={(score) => {
-                                    setQuizCompleted(true);
-                                    onQuizComplete(index, score);
-                                }}
-                            />
-
-                            {/* Navigation / Next Steps */}
-                            {isGeneratingNext ? (
-                                <div className="mt-8 p-6 bg-neutral-900 rounded-2xl border border-neutral-800 flex flex-col items-center justify-center gap-4 animate-pulse">
-                                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    <span className="text-neutral-400 font-medium tracking-wide">GENERATING NEXT MODULE</span>
+                    {/* Interactive Elements Grid */}
+                    <div className="grid lg:grid-cols-2 gap-10">
+                        {/* Flashcards */}
+                        {data.flashcards && data.flashcards.length > 0 && (
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                        <Layers className="w-4 h-4 text-blue-400" />
+                                    </div>
+                                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Active Recall</h3>
                                 </div>
-                            ) : (
-                                isLastModule && quizCompleted && (
-                                    <button
-                                        onClick={() => onQuizComplete(index, {})}
-                                        className="w-full mt-6 py-4 bg-white text-black hover:bg-neutral-200 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-3 transition-all transform hover:scale-[1.01]"
-                                    >
-                                        <span>Continue Learning</span>
-                                        <ArrowRight className="w-5 h-5" />
-                                    </button>
-                                )
-                            )}
-                        </div>
-                    )}
+                                <Flashcards cards={data.flashcards} />
+                            </div>
+                        )}
+
+                        {/* Quiz */}
+                        {data.quiz && Array.isArray(data.quiz) && data.quiz.length > 0 && (
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                        <HelpCircle className="w-4 h-4 text-purple-400" />
+                                    </div>
+                                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Knowledge Check</h3>
+                                </div>
+                                <div className="bg-white/[0.02] border border-white/5 rounded-[1.5rem] p-4">
+                                    <Quiz
+                                        questions={data.quiz}
+                                        onComplete={(score) => {
+                                            setQuizCompleted(true);
+                                            onQuizComplete(index, score);
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer Navigation */}
+                    <div className="pt-8 flex flex-col items-center">
+                        {isGeneratingNext ? (
+                            <div className="w-full p-8 bg-blue-500/5 rounded-3xl border border-blue-500/10 flex flex-col items-center gap-4 animate-pulse">
+                                <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+                                <span className="text-blue-400 text-xs font-bold tracking-[0.2em] uppercase">Constructing Next Lesson</span>
+                            </div>
+                        ) : (
+                            isLastModule && quizCompleted && (
+                                <button
+                                    onClick={() => onQuizComplete(index, {})}
+                                    className="group/btn relative px-12 py-5 bg-white text-black rounded-2xl font-black text-xl overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_20px_40px_rgba(255,255,255,0.1)]"
+                                >
+                                    <div className="relative z-10 flex items-center gap-4">
+                                        <span>Unlock Next Module</span>
+                                        <ArrowRight className="w-6 h-6 group-hover/btn:translate-x-2 transition-transform" />
+                                    </div>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover/btn:opacity-10 transition-opacity"></div>
+                                </button>
+                            )
+                        )}
+                    </div>
                 </div>
             )}
         </div>

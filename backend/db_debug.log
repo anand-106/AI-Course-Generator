@@ -237,3 +237,15 @@ Collection status: Available
 User: ananth@gmail.com
 [2026-02-25 03:31:57.586728] Successfully saved course aea8af38-4e53-479e-93ca-7e6b8aeed7e7
 [2026-02-25 03:31:57.588700] Stream finished/closed for aea8af38-4e53-479e-93ca-7e6b8aeed7e7
+[2026-02-25 04:48:17.713869] START request for 89a53031-ced2-4194-b1b0-c2b30202500e user=ananth@gmail.com prompt=make a small course on java programming
+[2026-02-25 04:48:49.126221] Reached finalize_course for 89a53031-ced2-4194-b1b0-c2b30202500e
+Collection status: Available
+User: ananth@gmail.com
+[2026-02-25 04:48:49.324443] Successfully saved course 89a53031-ced2-4194-b1b0-c2b30202500e
+[2026-02-25 04:48:49.326006] Stream finished/closed for 89a53031-ced2-4194-b1b0-c2b30202500e
+[2026-02-25 04:53:50.457088] START request for 3094c5a1-97df-4282-acfa-8be9808bd37c user=ananth@gmail.com prompt=make a small course on java programming
+[2026-02-25 04:54:34.021365] Reached finalize_course for 3094c5a1-97df-4282-acfa-8be9808bd37c
+Collection status: Available
+User: ananth@gmail.com
+[2026-02-25 04:54:34.270997] Successfully saved course 3094c5a1-97df-4282-acfa-8be9808bd37c
+[2026-02-25 04:54:34.273785] Stream finished/closed for 3094c5a1-97df-4282-acfa-8be9808bd37c
