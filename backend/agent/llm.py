@@ -19,7 +19,7 @@ class LLMClient:
     with robust JSON parsing capabilities.
     """
 
-    def __init__(self, model: str = "compound-beta", temperature: float = 0.3):
+    def __init__(self, model: str = "groq/compound", temperature: float = 0.3):
         self.model_name = model
         self.temperature = temperature
         self._llm = None
