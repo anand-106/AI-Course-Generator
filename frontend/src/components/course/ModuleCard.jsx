@@ -1,42 +1,51 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, FileText, Layers, HelpCircle, Check, ArrowRight } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, Layers, HelpCircle, Check, ArrowRight, Lock } from "lucide-react";
 import Flashcards from '../Flashcards';
 import Quiz from '../Quiz';
 import { ExplanationContent } from './ExplanationContent';
 
 export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext, isLastModule }) {
-    const [isExpanded, setIsExpanded] = useState(true);
+    const isLocked = !data;
+    const [isExpanded, setIsExpanded] = useState(!isLocked);
     const [quizCompleted, setQuizCompleted] = useState(false);
 
     return (
         <div
-            className="group bg-[#0A0A0A] border border-white/5 rounded-[2rem] overflow-hidden animate-slide-up transition-all duration-500 hover:border-white/10 shadow-2xl"
+            className={`group bg-[#0A0A0A] border rounded-[2rem] overflow-hidden animate-slide-up transition-all duration-500 shadow-2xl ${isLocked ? 'border-white/5 opacity-60' : 'border-white/10 hover:border-white/20'}`}
             style={{ animationDelay: `${index * 100}ms` }}
         >
             <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full px-10 py-8 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
+                onClick={() => !isLocked && setIsExpanded(!isExpanded)}
+                className={`w-full px-10 py-8 flex items-center justify-between transition-colors ${isLocked ? 'cursor-not-allowed' : 'hover:bg-white/[0.02]'}`}
             >
                 <div className="flex items-center gap-8">
                     <div className="relative flex-shrink-0">
-                        <div className="w-14 h-14 rounded-2xl bg-white text-black flex items-center justify-center font-black text-2xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                            {index + 1}
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl transition-all ${isLocked ? 'bg-neutral-800 text-neutral-500' : 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.1)]'}`}>
+                            {isLocked ? <Lock className="w-6 h-6" /> : index + 1}
                         </div>
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-black flex items-center justify-center">
-                            {quizCompleted && <Check className="w-3 h-3 text-white" strokeWidth={4} />}
-                        </div>
+                        {!isLocked && (
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-black flex items-center justify-center">
+                                {quizCompleted && <Check className="w-3 h-3 text-white" strokeWidth={4} />}
+                            </div>
+                        )}
                     </div>
                     <div className="text-left">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2 block">Module {index + 1}</span>
-                        <h2 className="text-3xl font-black text-white leading-tight tracking-tight group-hover:text-blue-400 transition-colors">{title}</h2>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2 block">
+                            {isLocked ? 'Upcoming Module' : `Module ${index + 1}`}
+                        </span>
+                        <h2 className={`text-3xl font-black leading-tight tracking-tight transition-colors ${isLocked ? 'text-neutral-500' : 'text-white'}`}>
+                            {title}
+                        </h2>
                     </div>
                 </div>
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center border border-white/10 transition-all duration-500 ${isExpanded ? 'rotate-180 bg-white text-black border-transparent' : 'text-slate-500 hover:border-white/20'}`}>
-                    <ChevronDown className="w-6 h-6" />
-                </div>
+                {!isLocked && (
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border border-white/10 transition-all duration-500 ${isExpanded ? 'rotate-180 bg-white text-black border-transparent' : 'text-slate-500 hover:border-white/20'}`}>
+                        <ChevronDown className="w-6 h-6" />
+                    </div>
+                )}
             </button>
 
-            {isExpanded && (
+            {isExpanded && data && (
                 <div className="px-10 pb-12 pt-4 space-y-16 animate-fade-in">
                     {/* Main Content Area */}
                     {data.explanations && (

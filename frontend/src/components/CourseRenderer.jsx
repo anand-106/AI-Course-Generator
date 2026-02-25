@@ -106,24 +106,27 @@ export default function CourseRenderer({ course }) {
             <div className="flex -space-x-2">
               {[1, 2, 3].map(i => <div key={i} className="w-8 h-8 rounded-full bg-neutral-800 border-2 border-neutral-900"></div>)}
             </div>
-            <span className="text-sm font-medium">{moduleEntries.length} Modules Generated</span>
+            <span className="text-sm font-medium">{moduleEntries.length} of {(localCourse.topics || []).length} Modules Unlocked</span>
           </div>
         </div>
       </div>
 
       {/* Modules List */}
       <div className="flex flex-col gap-6">
-        {moduleEntries.map(([title, data], i) => (
-          <ModuleCard
-            key={title}
-            title={title}
-            data={data}
-            index={i}
-            onQuizComplete={handleQuizComplete}
-            isGeneratingNext={generatingNext && i === moduleEntries.length - 1}
-            isLastModule={i === moduleEntries.length - 1}
-          />
-        ))}
+        {(localCourse.topics || []).map((topic, i) => {
+          const moduleData = modules[topic];
+          return (
+            <ModuleCard
+              key={topic}
+              title={topic}
+              data={moduleData}
+              index={i}
+              onQuizComplete={handleQuizComplete}
+              isGeneratingNext={generatingNext && i === moduleEntries.length - 1}
+              isLastModule={i === moduleEntries.length - 1}
+            />
+          );
+        })}
       </div>
     </div>
   );

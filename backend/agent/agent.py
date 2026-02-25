@@ -162,24 +162,52 @@ def node_generate_topics(state: CourseState) -> CourseState:
 # PUBLIC HELPERS
 # -------------------------------------------------------------------
 
+def score_video_relevance(query: str, video: Dict[str, Any]) -> float:
+    """Score video based on title/channel relevance to the query."""
+    title = video.get("title", "").lower()
+    query_clean = re.sub(r'[^a-zA-Z0-0\s]', '', query.lower())
+    query_words = set(query_clean.split())
+    
+    title_clean = re.sub(r'[^a-zA-Z0-0\s]', '', title)
+    title_words = set(title_clean.split())
+    
+    if not query_words:
+        return 0
+    
+    intersection = query_words.intersection(title_words)
+    return len(intersection) / len(query_words)
+
+
 def generate_module_content(topic: str) -> Dict[str, Any]:
     """Generates full content for a single module (public helper)."""
     subtopics = _generate_subtopics(topic)
 
-    # 1 targeted video per subtopic
-    videos = []
+    # Fetch and select 1 highly relevant video per subtopic
+    selected_videos = []
     for st in subtopics:
-        results = search_youtube_videos(f"{st} {topic} explained", limit=1)
+        query = f"{st} {topic} tutorial"
+        results = search_youtube_videos(query, limit=3)
         if results:
-            videos.append(results[0])
+            # Score results and pick the best match
+            best_video = max(results, key=lambda v: score_video_relevance(st, v))
+            selected_videos.append(best_video)
 
-    # Single LLM call per module to get everything, including the diagram
-    package = _generate_module_package(topic, subtopics, videos)
+    # Single LLM call per module to get everything
+    package = _generate_module_package(topic, subtopics, selected_videos)
+    explanations = package.get("explanations", {})
+
+    # Ensure contextual placement: Attach [[VIDEO_i]] tag to the end of each subtopic 
+    # if the LLM didn't already place it, ensuring every subtopic has its corresponding video.
+    for i, st in enumerate(subtopics):
+        if st in explanations:
+            tag = f"[[VIDEO_{i}]]"
+            if tag not in explanations[st]:
+                explanations[st] = explanations[st].strip() + f"\n\n{tag}"
 
     return {
         "module_title": topic,
-        "explanations": package.get("explanations", {}),
-        "videos": videos,
+        "explanations": explanations,
+        "videos": selected_videos,
         "mermaid": package.get("mermaid", ""),
         "flashcards": package.get("flashcards", []),
         "quiz": package.get("quiz", []),
@@ -255,7 +283,7 @@ EXPLANATIONS REQUIREMENTS:
   8. Summary Recap: A concise wrap-up (only after the full explanation).
 - Include code, syntax, or formal logic where applicable.
 - Use [[MERMAID]] tag in exactly ONE subtopic to place the diagram.
-- Use [[VIDEO_0]], [[VIDEO_1]], etc. inline where specific video context is relevant.
+- Video Embedding: Each subtopic {{i}} (0-indexed) has a corresponding Video {{i}}. You MUST embed the tag [[VIDEO_{{i}}]] at the end of the explanation for subtopic {{i}} to provide visual context.
 - Prefer completeness over brevity. No length limit.
 
 DIAGRAM REQUIREMENTS:

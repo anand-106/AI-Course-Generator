@@ -1,63 +1,122 @@
 import React from 'react';
-import { Layers, PlayCircle, Info, History, Cpu, ListOrdered, Lightbulb, Globe, AlertTriangle, CheckCircle } from "lucide-react";
+import { Layers, PlayCircle, Info, History, Cpu, ListOrdered, Lightbulb, Globe, AlertTriangle, CheckCircle, Terminal } from "lucide-react";
 import { MermaidBlock } from './MermaidBlock';
 import { YouTubeEmbed } from './YouTubeEmbed';
 
-const SECTION_STYLES = {
-    "Concept Overview": { icon: Info, color: "text-blue-400", bg: "bg-blue-400/5", border: "border-blue-400/10" },
-    "Historical/Conceptual Background": { icon: History, color: "text-amber-400", bg: "bg-amber-400/5", border: "border-amber-400/10" },
-    "Detailed Technical Explanation": { icon: Cpu, color: "text-purple-400", bg: "bg-purple-400/5", border: "border-purple-400/10" },
-    "Step-by-Step Working": { icon: ListOrdered, color: "text-emerald-400", bg: "bg-emerald-400/5", border: "border-emerald-400/10", isStep: true },
+const SECTION_CONFIG = {
+    "Concept Overview": { icon: Info, color: "text-blue-400", bg: "bg-blue-400/5", border: "border-blue-400/20" },
+    "Historical/Conceptual Background": { icon: History, color: "text-slate-400", bg: "bg-white/[0.02]", border: "border-white/10" },
+    "Detailed Technical Explanation": { icon: Cpu, color: "text-purple-400", bg: "bg-purple-400/5", border: "border-purple-400/20" },
+    "Step-by-Step Working": { icon: ListOrdered, color: "text-emerald-400", bg: "bg-emerald-400/5", border: "border-emerald-400/20", isStep: true },
     "Practical Examples": { icon: Lightbulb, color: "text-orange-400", bg: "bg-orange-400/5", border: "border-orange-400/20", isCallout: true },
-    "Real-World Applications": { icon: Globe, color: "text-indigo-400", bg: "bg-indigo-400/5", border: "border-indigo-400/10" },
+    "Real-World Applications": { icon: Globe, color: "text-indigo-400", bg: "bg-indigo-400/5", border: "border-indigo-400/20" },
     "Common Mistakes or Confusions": { icon: AlertTriangle, color: "text-red-400", bg: "bg-red-400/5", border: "border-red-400/20", isCallout: true },
-    "Summary Recap": { icon: CheckCircle, color: "text-slate-400", bg: "bg-white/5", border: "border-white/10", isSoft: true }
+    "Summary Recap": { icon: CheckCircle, color: "text-slate-500", bg: "bg-white/[0.01]", border: "border-white/5", isSoft: true }
 };
 
 function parseMarkdown(text) {
     if (!text) return null;
 
-    // Handle code blocks first
+    // Handle code blocks with a terminal-like appearance
     const parts = text.split(/(```[\s\S]*?```|`.*?`)/g);
 
     return parts.map((part, i) => {
         if (part.startsWith('```')) {
             const code = part.replace(/```(javascript|python|css|html|json)?/i, '').replace(/```$/, '').trim();
             return (
-                <pre key={i} className="my-4 p-4 bg-black border border-white/10 rounded-xl overflow-x-auto font-mono text-sm text-emerald-400 leading-relaxed shadow-inner">
-                    <code>{code}</code>
-                </pre>
+                <div key={i} className="my-6 group relative">
+                    <div className="absolute -top-3 left-4 px-2 py-1 bg-neutral-800 border border-white/10 rounded font-mono text-[10px] text-slate-500 uppercase tracking-widest z-10 flex items-center gap-2">
+                        <Terminal className="w-3 h-3" /> Source Code
+                    </div>
+                    <pre className="p-6 bg-black border border-white/10 rounded-2xl overflow-x-auto font-mono text-sm leading-relaxed shadow-2xl">
+                        <code className="text-emerald-400">{code}</code>
+                    </pre>
+                </div>
             );
         }
         if (part.startsWith('`')) {
-            return <code key={i} className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-sm text-blue-300">{part.slice(1, -1)}</code>;
+            return (
+                <code key={i} className="px-2 py-0.5 bg-white/10 border border-white/5 rounded-md font-mono text-sm text-blue-300">
+                    {part.slice(1, -1)}
+                </code>
+            );
         }
 
-        // Handle bolding
+        // Key terms highlighting (Variables, Data Types, etc.)
         const boldParts = part.split(/(\*\*.*?\*\*)/g);
         return boldParts.map((bp, j) => {
             if (bp.startsWith('**') && bp.endsWith('**')) {
-                return <strong key={`${i}-${j}`} className="text-white font-bold">{bp.slice(2, -2)}</strong>;
+                const term = bp.slice(2, -2);
+                return (
+                    <strong key={`${i}-${j}`} className="text-white font-bold bg-white/5 px-1 rounded transition-colors hover:bg-white/10">
+                        {term}
+                    </strong>
+                );
             }
             return bp;
         });
     });
 }
 
-function SectionRenderer({ title, text, videos, mermaid, usedVideoIndices, mermaidUsedRef }) {
-    const config = SECTION_STYLES[title] || { icon: Info, color: "text-slate-400", bg: "bg-white/5", border: "border-white/10" };
+function StepTimeline({ content }) {
+    const steps = content.split(/\n(?=\d+\.)/);
+    return (
+        <div className="relative space-y-8 pl-8 ml-4 border-l border-white/10 my-8">
+            {steps.map((step, si) => (
+                <div key={si} className="relative group">
+                    {/* Timeline dot */}
+                    <div className="absolute -left-[45px] top-1 w-8 h-8 rounded-full bg-neutral-900 border border-emerald-500/50 flex items-center justify-center text-emerald-400 font-bold text-xs shadow-[0_0_15px_rgba(16,185,129,0.2)] group-hover:scale-110 transition-transform">
+                        {si + 1}
+                    </div>
+                    <div className="p-6 rounded-3xl bg-emerald-500/[0.02] border border-emerald-500/10 hover:border-emerald-500/20 transition-all">
+                        <div className="text-slate-300 leading-relaxed font-medium">
+                            {parseMarkdown(step.replace(/^\d+\.\s*/, ''))}
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function CalloutBox({ title, content, config }) {
     const Icon = config.icon;
+    return (
+        <div className={`relative overflow-hidden rounded-3xl border ${config.border} ${config.bg} p-8 my-8`}>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="flex items-start gap-6 relative z-10">
+                <div className={`mt-1 p-3 rounded-2xl ${config.bg} ${config.color} border ${config.border}`}>
+                    <Icon className="w-6 h-6" />
+                </div>
+                <div className="space-y-3">
+                    <h5 className={`text-lg font-black uppercase tracking-widest ${config.color}`}>{title}</h5>
+                    <div className="text-slate-300 leading-relaxed">
+                        {parseMarkdown(content)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function SectionRenderer({ title, text, videos, mermaid, usedVideoIndices, mermaidUsedRef }) {
+    const config = SECTION_CONFIG[title] || { icon: Info, color: "text-slate-400", bg: "bg-white/[0.02]", border: "border-white/10" };
+    const Icon = config.icon;
+
+    if (config.isCallout) {
+        return <CalloutBox title={title} content={text} config={config} />;
+    }
 
     const parts = text.split(/(\[\[MERMAID\]\]|\[\[VIDEO_\d+\]\])/g);
 
-    const renderedText = parts.map((part, idx) => {
+    const renderedContent = parts.map((part, idx) => {
         if (part === "[[MERMAID]]") {
             if (!mermaid || mermaidUsedRef.current) return null;
             mermaidUsedRef.current = true;
             return (
-                <div key={idx} className="my-8">
-                    <div className="flex items-center gap-2 mb-3 text-blue-400 font-bold tracking-tight text-sm uppercase">
-                        <Layers className="w-4 h-4" /> System Diagram
+                <div key={idx} className="my-10 p-8 rounded-[2.5rem] bg-black border border-white/5 shadow-2xl">
+                    <div className="flex items-center gap-2 mb-6 text-blue-400 font-black tracking-[0.2em] text-[10px] uppercase">
+                        <Layers className="w-4 h-4" /> Architecture Blueprint
                     </div>
                     <MermaidBlock code={mermaid} idSuffix={`inline-${idx}`} />
                 </div>
@@ -71,54 +130,43 @@ function SectionRenderer({ title, text, videos, mermaid, usedVideoIndices, merma
             if (!video) return null;
             usedVideoIndices.add(index);
             return (
-                <div key={idx} className="my-8">
-                    <div className="flex items-center gap-2 mb-3 text-red-500 font-bold tracking-tight text-sm uppercase">
-                        <PlayCircle className="w-4 h-4" /> Concept Video
+                <div key={idx} className="my-10">
+                    <div className="flex items-center gap-2 mb-4 text-red-500 font-black tracking-[0.2em] text-[10px] uppercase">
+                        <PlayCircle className="w-4 h-4" /> Masterclass Session
                     </div>
-                    <YouTubeEmbed link={video.link} title={video.title} />
+                    <div className="rounded-[2rem] overflow-hidden shadow-2xl border border-white/10">
+                        <YouTubeEmbed link={video.link} title={video.title} />
+                    </div>
                 </div>
             );
         }
 
         if (!part.trim()) return null;
 
-        // Handle step by step visual
         if (config.isStep) {
-            const steps = part.split(/\n(?=\d+\.)/);
-            return (
-                <div key={idx} className="space-y-4">
-                    {steps.map((step, si) => (
-                        <div key={si} className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/5 transition-all hover:bg-white/[0.07]">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
-                                {si + 1}
-                            </div>
-                            <div className="text-slate-300 leading-relaxed pt-0.5">{parseMarkdown(step.replace(/^\d+\.\s*/, ''))}</div>
-                        </div>
-                    ))}
-                </div>
-            );
+            return <StepTimeline key={idx} content={part} />;
         }
 
-        return <div key={idx} className="whitespace-pre-wrap leading-relaxed text-slate-300">{parseMarkdown(part)}</div>;
+        return <div key={idx} className="whitespace-pre-wrap leading-relaxed text-slate-300 text-lg lg:text-xl font-normal tracking-tight">{parseMarkdown(part)}</div>;
     });
 
     return (
-        <div className={`rounded-3xl p-6 md:p-8 border ${config.border} ${config.bg} space-y-4 transition-all duration-300`}>
-            <div className="flex items-center gap-3 border-b border-white/5 pb-4 mb-4">
-                <div className={`p-2 rounded-xl ${config.bg} ${config.color} border ${config.border}`}>
-                    <Icon className="w-5 h-5" />
+        <div className={`group relative rounded-[2.5rem] p-8 lg:p-12 border ${config.border} ${config.bg} space-y-6 transition-all duration-700 hover:shadow-2xl`}>
+            <div className="flex items-center gap-4 pb-6 border-b border-white/5">
+                <div className={`p-3 rounded-2xl ${config.bg} ${config.color} border ${config.border} shadow-lg`}>
+                    <Icon className="w-6 h-6" />
                 </div>
-                <h4 className={`text-xl font-bold tracking-tight ${config.color}`}>{title}</h4>
+                <h4 className={`text-2xl lg:text-3xl font-black tracking-tighter ${config.color}`}>{title}</h4>
             </div>
-            <div className="space-y-4">
-                {renderedText}
+            <div className="space-y-6">
+                {renderedContent}
             </div>
         </div>
     );
 }
 
 function parseSections(text) {
-    const titles = Object.keys(SECTION_STYLES);
+    const titles = Object.keys(SECTION_CONFIG);
     const pattern = new RegExp(`^\\d\\.\\s+(${titles.join('|').replace(/\//g, '\\/')})\\:?`, 'gmi');
 
     const sections = [];
@@ -142,20 +190,21 @@ export function ExplanationContent({ content, videos, mermaid }) {
     const usedVideoIndices = new Set();
     const mermaidUsedRef = React.useRef(false);
 
-    // If content is an object (multiple subtopics)
     if (typeof content === 'object' && content !== null) {
         return (
-            <div className="space-y-12">
+            <div className="space-y-24 max-w-5xl mx-auto pb-20">
                 {Object.entries(content).map(([topic, text]) => {
                     const sections = parseSections(String(text));
                     return (
-                        <div key={topic} className="space-y-8 animate-fade-in">
-                            <div className="relative pl-6 py-2 border-l-2 border-white/10">
-                                <h3 className="text-3xl font-extrabold text-white tracking-tight">{topic}</h3>
-                                <div className="absolute top-0 left-[-2px] w-[2px] h-full bg-gradient-to-b from-blue-500 to-transparent"></div>
+                        <div key={topic} className="space-y-12 animate-fade-in">
+                            {/* Header for Subtopic */}
+                            <div className="relative pt-16">
+                                <div className="absolute top-0 left-0 w-32 h-1.5 bg-gradient-to-r from-blue-500 to-transparent"></div>
+                                <h3 className="text-4xl lg:text-7xl font-black text-white tracking-tighter leading-none mb-6">{topic}</h3>
+                                <p className="text-slate-500 font-bold uppercase tracking-[0.4em] text-[11px] opacity-70">Concept Module Mastery</p>
                             </div>
 
-                            <div className="space-y-8">
+                            <div className="space-y-16">
                                 {sections.map((section, si) => (
                                     <SectionRenderer
                                         key={si}
@@ -171,35 +220,9 @@ export function ExplanationContent({ content, videos, mermaid }) {
                         </div>
                     );
                 })}
-
-                {/* Unused resources footer */}
-                <UnusedResources videos={videos} usedVideoIndices={usedVideoIndices} />
             </div>
         );
     }
 
     return null;
-}
-
-function UnusedResources({ videos, usedVideoIndices }) {
-    const unusedVideos = videos ? videos.filter((_, idx) => !usedVideoIndices.has(idx)) : [];
-    if (unusedVideos.length === 0) return null;
-
-    return (
-        <div className="mt-16 pt-12 border-t border-white/10 space-y-8">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">Learning Lab Resources</h4>
-            <div>
-                <div className="flex items-center gap-2 mb-6 text-red-500 font-bold uppercase text-sm tracking-wider">
-                    <PlayCircle className="w-5 h-5" /> Detailed Video Tutorials
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                    {unusedVideos.map((video, i) => (
-                        <div key={i} className="group transition-all hover:translate-y-[-4px]">
-                            <YouTubeEmbed link={video.link} title={video.title} />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
 }
