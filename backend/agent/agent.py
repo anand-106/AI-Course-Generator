@@ -178,14 +178,19 @@ def score_video_relevance(query: str, video: Dict[str, Any]) -> float:
     return len(intersection) / len(query_words)
 
 
-def generate_module_content(topic: str) -> Dict[str, Any]:
+def generate_module_content(topic: str, course_title: str = "") -> Dict[str, Any]:
     """Generates full content for a single module (public helper)."""
     subtopics = _generate_subtopics(topic)
 
-    # Fetch and select 1 highly relevant video per subtopic
+    # Fetch and select 1 highly relevant video per subtopic.
+    # Include the course subject in the search query for contextual, domain-specific results.
+    # e.g. "Python Variables and Data Types tutorial" instead of just "Variables tutorial"
     selected_videos = []
     for st in subtopics:
-        query = f"{st} {topic} tutorial"
+        if course_title:
+            query = f"{course_title} {st} tutorial"
+        else:
+            query = f"{st} {topic} tutorial"
         results = search_youtube_videos(query, limit=3)
         if results:
             # Score results and pick the best match
@@ -219,7 +224,8 @@ def node_generate_module(state: CourseState) -> CourseState:
         return state
     
     current_topic = state["pending_topics"].pop(0)
-    state["generated_modules"][current_topic] = generate_module_content(current_topic)
+    course_title = state.get("enhanced_prompt", "")
+    state["generated_modules"][current_topic] = generate_module_content(current_topic, course_title=course_title)
     return state
 
 

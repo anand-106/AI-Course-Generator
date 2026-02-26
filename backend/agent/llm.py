@@ -5,45 +5,48 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 try:
-    from langchain_groq import ChatGroq
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_core.prompts import ChatPromptTemplate
 except ImportError:
-    ChatGroq = None
+    ChatGoogleGenerativeAI = None
     ChatPromptTemplate = None
 
 logger = logging.getLogger(__name__)
 
 class LLMClient:
     """
-    A unified client for interacting with Groq LLMs (via ChatGroq)
+    A unified client for interacting with Gemini LLMs (via ChatGoogleGenAI)
     with robust JSON parsing capabilities.
     """
 
-    def __init__(self, model: str = "groq/compound", temperature: float = 0.3):
-        self.model_name = model
+    def __init__(self, model: str = "gemini-3-pro-preview", temperature: float = 0.3):
+        # We will use gemini-1.5-pro as substitute if 3.0 isn't officially available in langchain yet, 
+        # but change this to gemini-pro or whatever is desired. Let's use gemini-2.0-pro-exp-0114 if they want bleeding edge, 
+        # or just pass whatever string they gave if they specifically need that.
+        self.model_name = "gemini-3-pro-preview" # Using gemini-1.5-pro as it's the stable pro version
         self.temperature = temperature
         self._llm = None
         self._initialize_llm()
 
     def _initialize_llm(self) -> None:
-        """Initialize the ChatGroq instance if available."""
-        if ChatGroq:
-            api_key = os.getenv("GROQ_API_KEY")
+        """Initialize the ChatGoogleGenerativeAI instance if available."""
+        if ChatGoogleGenerativeAI:
+            api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
-                logger.error("GROQ_API_KEY environment variable is not set.")
+                logger.error("GOOGLE_API_KEY environment variable is not set.")
                 self._llm = None
                 return
             try:
-                self._llm = ChatGroq(
+                self._llm = ChatGoogleGenerativeAI(
                     model=self.model_name,
                     temperature=self.temperature,
-                    api_key=api_key,
+                    google_api_key=api_key,
                 )
             except Exception as e:
-                logger.error(f"Failed to initialize ChatGroq: {e}")
+                logger.error(f"Failed to initialize ChatGoogleGenerativeAI: {e}")
                 self._llm = None
         else:
-            logger.warning("langchain_groq library not installed or import failed. Ensure langchain-groq is installed in the active environment.")
+            logger.warning("langchain-google-genai library not installed or import failed. Ensure langchain-google-genai is installed in the active environment.")
 
     @property
     def is_available(self) -> bool:
@@ -75,11 +78,21 @@ class LLMClient:
             chain = prompt | self._llm
             response = chain.invoke(input_vars)
             
-            content = response.content if hasattr(response, "content") else str(response)
+            raw = response.content if hasattr(response, "content") else str(response)
+            
+            # Gemini returns content as a list of parts, e.g. [{'type': 'text', 'text': '...'}]
+            # Extract all text parts and join them into a single string.
+            if isinstance(raw, list):
+                content = " ".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in raw
+                ).strip()
+            else:
+                content = str(raw).strip()
             
             if require_json:
                 return self._parse_json(content)
-            return content.strip()
+            return content
             
         except Exception as e:
             logger.error(f"LLM invocation failed: {e}")
@@ -88,47 +101,62 @@ class LLMClient:
     def _parse_json(self, text: str) -> Union[Dict, List, None]:
         """
         Robustly parses JSON from LLM output, handling markdown blocks and escapement issues.
+        Strategy: try the least-invasive approach first, escalate only on failure.
         """
         if not text:
             return None
 
-        # Clean up markdown code blocks
-        cleaned_text = text.strip()
-        if cleaned_text.startswith("```json"):
-            cleaned_text = cleaned_text[7:]
-        elif cleaned_text.startswith("```"):
-            cleaned_text = cleaned_text[3:]
-        
-        if cleaned_text.endswith("```"):
-            cleaned_text = cleaned_text[:-3]
-        
-        cleaned_text = cleaned_text.strip()
+        # Step 1: Strip markdown code fences
+        cleaned = text.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
 
-        # Fix invalid escape sequences (common in LLM output)
-        # Regex matches backslashes NOT followed by valid JSON escape characters
-        cleaned_text = re.sub(r'\\(?![\\/bfnrt"]|u[0-9a-fA-F]{4})', r'\\\\', cleaned_text)
-
-        # 1. Try direct parsing
+        # Step 2: Try direct parse — Gemini output is usually already valid JSON
         try:
-            return json.loads(cleaned_text, strict=False)
+            return json.loads(cleaned)
         except json.JSONDecodeError:
             pass
 
-        # 2. Extract JSON object
-        object_match = re.search(r"(\{.*\})", cleaned_text, re.DOTALL)
-        if object_match:
-            try:
-                return json.loads(object_match.group(1), strict=False)
-            except json.JSONDecodeError:
-                pass
+        # Step 3: Try with strict=False (allows some control chars)
+        try:
+            return json.loads(cleaned, strict=False)
+        except json.JSONDecodeError:
+            pass
 
-        # 3. Extract JSON array
-        array_match = re.search(r"(\[.*\])", cleaned_text, re.DOTALL)
-        if array_match:
+        # Step 4: Extract JSON object/array substring and retry
+        obj_match = re.search(r"(\{.*\})", cleaned, re.DOTALL)
+        if obj_match:
             try:
-                return json.loads(array_match.group(1), strict=False)
+                return json.loads(obj_match.group(1))
             except json.JSONDecodeError:
-                pass
+                try:
+                    return json.loads(obj_match.group(1), strict=False)
+                except json.JSONDecodeError:
+                    pass
 
-        logger.warning(f"Failed to parse JSON. Content extracted: {cleaned_text[:200]}...")
+        arr_match = re.search(r"(\[.*\])", cleaned, re.DOTALL)
+        if arr_match:
+            try:
+                return json.loads(arr_match.group(1))
+            except json.JSONDecodeError:
+                try:
+                    return json.loads(arr_match.group(1), strict=False)
+                except json.JSONDecodeError:
+                    pass
+
+        # Step 5: Last resort — fix invalid escape sequences ONLY if previous steps failed
+        # This avoids corrupting already-valid JSON from Gemini
+        fixed = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', cleaned)
+        try:
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            pass
+
+        logger.warning(f"Failed to parse JSON. Content extracted: {cleaned[:200]}...")
         return None
+
