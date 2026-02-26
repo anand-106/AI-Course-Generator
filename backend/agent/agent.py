@@ -162,20 +162,7 @@ def node_generate_topics(state: CourseState) -> CourseState:
 # PUBLIC HELPERS
 # -------------------------------------------------------------------
 
-def score_video_relevance(query: str, video: Dict[str, Any]) -> float:
-    """Score video based on title/channel relevance to the query."""
-    title = video.get("title", "").lower()
-    query_clean = re.sub(r'[^a-zA-Z0-0\s]', '', query.lower())
-    query_words = set(query_clean.split())
-    
-    title_clean = re.sub(r'[^a-zA-Z0-0\s]', '', title)
-    title_words = set(title_clean.split())
-    
-    if not query_words:
-        return 0
-    
-    intersection = query_words.intersection(title_words)
-    return len(intersection) / len(query_words)
+# Removed score_video_relevance
 
 
 def generate_module_content(topic: str, course_title: str = "") -> Dict[str, Any]:
@@ -191,11 +178,12 @@ def generate_module_content(topic: str, course_title: str = "") -> Dict[str, Any
             query = f"{course_title} {st} tutorial"
         else:
             query = f"{st} {topic} tutorial"
-        results = search_youtube_videos(query, limit=3)
+        results = search_youtube_videos(query, limit=1)
         if results:
-            # Score results and pick the best match
-            best_video = max(results, key=lambda v: score_video_relevance(st, v))
-            selected_videos.append(best_video)
+            # Trust YouTube's native search ranking (result #1) as it is much smarter than word matching
+            selected_videos.append(results[0])
+        else:
+            selected_videos.append(None)
 
     # Single LLM call per module to get everything
     package = _generate_module_package(topic, subtopics, selected_videos)
@@ -203,11 +191,15 @@ def generate_module_content(topic: str, course_title: str = "") -> Dict[str, Any
 
     # Ensure contextual placement: Attach [[VIDEO_i]] tag to the end of each subtopic 
     # if the LLM didn't already place it, ensuring every subtopic has its corresponding video.
-    for i, st in enumerate(subtopics):
-        if st in explanations:
+    # We iterate by order since LLMs might slightly alter the dict keys.
+    for i, key in enumerate(explanations.keys()):
+        if i < len(selected_videos) and selected_videos[i] is not None:
             tag = f"[[VIDEO_{i}]]"
-            if tag not in explanations[st]:
-                explanations[st] = explanations[st].strip() + f"\n\n{tag}"
+            if tag not in explanations[key]:
+                explanations[key] = explanations[key].strip() + f"\n\n{tag}"
+        else:
+            # Clean up broken tags if no video exists
+            explanations[key] = explanations[key].replace(f"[[VIDEO_{i}]]", "")
 
     return {
         "module_title": topic,
@@ -295,6 +287,7 @@ Rules for Subtopic Explanations:
 - You must generate AT LEAST 4-5 of the above structure sections for each subtopic.
 - NEVER combine everything into a single short paragraph. Break the text under each heading into detailed, in-depth explanations.
 - Adapt content logically: derive logically for math/physics, explain principles for science, analyze frameworks for humanities. Let the content be natural.
+- The keys within the "explanations" JSON object MUST EXACTLY MATCH the items listed in Subtopics. Do not alter the subtopic names at all.
 - Use [[MERMAID]] tag exactly ZERO or ONE time in the entire module's explanations.
 - Video Embedding: Each subtopic {{i}} (0-indexed) has a corresponding Video {{i}}. You MUST embed the tag [[VIDEO_{{i}}]] at the end of the explanation for subtopic {{i}} to provide visual context.
 

@@ -92,8 +92,8 @@ def search_youtube_videos(query: str, limit: int = 1) -> List[Dict[str, str]]:
                 duration_text = length_text.get("simpleText", "")
 
             seconds = _parse_duration_text(duration_text)
-            if seconds <= 0 or seconds > MAX_DURATION_SECONDS:
-                continue
+            if seconds <= 0:
+                pass  # It's OK if duration parsing fails, still a valid video
 
             title_runs = r.get("title", {}).get("runs", [])
             title = title_runs[0].get("text", "") if title_runs else f"Video for {query}"
