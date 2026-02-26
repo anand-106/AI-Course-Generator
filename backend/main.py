@@ -7,6 +7,7 @@ import logging
 
 from routers import auth
 from routers import course
+from routers import chat
 
 load_dotenv()
 
@@ -31,6 +32,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.include_router(auth.router)
 app.include_router(course.router)
+app.include_router(chat.router)
 
 @app.get("/")
 def home():

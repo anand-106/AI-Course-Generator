@@ -148,18 +148,18 @@ function SectionRenderer({ title, text, videos, mermaid, usedVideoIndices, merma
             return <StepTimeline key={idx} content={part} />;
         }
 
-        return <div key={idx} className="whitespace-pre-wrap leading-relaxed text-slate-300 text-lg lg:text-xl font-normal tracking-tight">{parseMarkdown(part)}</div>;
+        return <div key={idx} className="whitespace-pre-wrap leading-[1.8] text-slate-300 text-lg lg:text-xl font-normal tracking-tight mb-8 last:mb-0">{parseMarkdown(part)}</div>;
     });
 
     return (
-        <div className={`group relative rounded-[2.5rem] p-8 lg:p-12 border ${config.border} ${config.bg} space-y-6 transition-all duration-700 hover:shadow-2xl`}>
-            <div className="flex items-center gap-4 pb-6 border-b border-white/5">
-                <div className={`p-3 rounded-2xl ${config.bg} ${config.color} border ${config.border} shadow-lg`}>
-                    <Icon className="w-6 h-6" />
+        <div className={`group relative rounded-[3rem] p-10 lg:p-16 border ${config.border} ${config.bg} space-y-10 transition-all duration-700 hover:shadow-2xl`}>
+            <div className="flex items-center gap-6 pb-10 border-b border-white/5">
+                <div className={`p-4 rounded-2xl ${config.bg} ${config.color} border ${config.border} shadow-lg`}>
+                    <Icon className="w-8 h-8" />
                 </div>
-                <h4 className={`text-2xl lg:text-3xl font-black tracking-tighter ${config.color}`}>{title}</h4>
+                <h4 className={`text-3xl lg:text-4xl font-black tracking-tighter ${config.color}`}>{title}</h4>
             </div>
-            <div className="space-y-6">
+            <div className="space-y-10">
                 {renderedContent}
             </div>
         </div>
@@ -199,10 +199,13 @@ export function ExplanationContent({ content, videos, mermaid }) {
                     return (
                         <div key={topic} className="space-y-12 animate-fade-in">
                             {/* Header for Subtopic */}
-                            <div className="relative pt-16">
-                                <div className="absolute top-0 left-0 w-32 h-1.5 bg-gradient-to-r from-blue-500 to-transparent"></div>
-                                <h3 className="text-4xl lg:text-7xl font-black text-white tracking-tighter leading-none mb-6">{topic}</h3>
-                                <p className="text-slate-500 font-bold uppercase tracking-[0.4em] text-[11px] opacity-70">Concept Module Mastery</p>
+                            <div className="relative pt-24">
+                                <div className="absolute top-0 left-0 w-40 h-2 bg-gradient-to-r from-white/20 to-transparent"></div>
+                                <h3 className="text-5xl lg:text-8xl font-black text-white tracking-tighter leading-[0.9] mb-8">{topic}</h3>
+                                <div className="flex items-center gap-3 opacity-50">
+                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                                    <p className="text-slate-500 font-bold uppercase tracking-[0.5em] text-xs">Knowledge Pillar</p>
+                                </div>
                             </div>
 
                             <div className="space-y-16">

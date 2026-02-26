@@ -89,8 +89,8 @@ Requirements:
 PROMPT_SUBTOPICS_SYS = "You are a subject matter expert. Return raw JSON array only."
 PROMPT_SUBTOPICS_USER = """
 For the course module "{topic}", generate 4–6 detailed submodules.
-Each submodule should represent a clear learning unit.
-Return ONLY a JSON array of short strings.
+Each submodule should represent a single, clear learning unit (e.g., "Arithmetic Operators" instead of "Operators and Expressions").
+Return ONLY a JSON array of short, descriptive strings.
 """
 
 
@@ -171,19 +171,10 @@ def generate_module_content(topic: str, course_title: str = "") -> Dict[str, Any
 
     # Fetch and select 1 highly relevant video per subtopic.
     # Include the course subject in the search query for contextual, domain-specific results.
-    # e.g. "Python Variables and Data Types tutorial" instead of just "Variables tutorial"
     selected_videos = []
     for st in subtopics:
-        if course_title:
-            query = f"{course_title} {st} tutorial"
-        else:
-            query = f"{st} {topic} tutorial"
-        results = search_youtube_videos(query, limit=1)
-        if results:
-            # Trust YouTube's native search ranking (result #1) as it is much smarter than word matching
-            selected_videos.append(results[0])
-        else:
-            selected_videos.append(None)
+        video = _fetch_video_with_retry(st, topic, course_title)
+        selected_videos.append(video)
 
     # Single LLM call per module to get everything
     package = _generate_module_package(topic, subtopics, selected_videos)
@@ -354,6 +345,65 @@ def _generate_subtopics(topic: str) -> List[str]:
     if isinstance(resp, list):
         return [str(item) if not isinstance(item, str) else item for item in resp]
     return ["Overview", "Key Concepts", "Practical Examples", "Summary"]
+
+
+def _is_real_video(video: Optional[Dict[str, Any]]) -> bool:
+    """Checks if the video object contains a valid watch link."""
+    if not video:
+        return False
+    return "watch?v=" in video.get("link", "")
+
+
+def _fetch_video_with_retry(subtopic: str, topic: str, course_title: str) -> Optional[Dict[str, Any]]:
+    """Tries multiple query variations to ensure a real video is found for the subtopic."""
+    
+    # 1. Clean inputs
+    clean_topic = topic.split(":")[-1].strip()
+    
+    # 2. Candidate generation
+    queries = []
+    
+    # Contextual priority
+    if course_title:
+        queries.append(f"{course_title} {subtopic} tutorial")
+    queries.append(f"{subtopic} {clean_topic} tutorial")
+    queries.append(f"{subtopic} tutorial")
+
+    # Keyword decomposition (e.g., "Operators and Expressions" -> "Operators", "Expressions")
+    # This addresses the user's specific request for keyword-based fallback.
+    import re
+    parts = re.split(r' and | & | with | in | of | / | - ', subtopic, flags=re.IGNORECASE)
+    if len(parts) > 1:
+        for p in parts:
+            p = p.strip()
+            if len(p) > 3:
+                queries.append(f"{p} {clean_topic} tutorial")
+                queries.append(f"{p} tutorial")
+
+    # Final broad fallbacks
+    queries.append(f"{clean_topic} tutorial")
+    queries.append(f"{clean_topic}")
+
+    # 3. Search and Validate
+    seen_queries = set()
+    first_result = None
+    
+    for q in queries:
+        if q in seen_queries:
+            continue
+        seen_queries.add(q)
+        
+        logger.info(f"Searching YouTube for: {q}")
+        results = search_youtube_videos(q, limit=1)
+        
+        if results and _is_real_video(results[0]):
+            return results[0]
+        
+        if not first_result and results:
+            first_result = results[0]
+
+    # 4. Return the best available result if no 'real' video found, or None
+    return first_result
 
 
 # -------------------------------------------------------------------

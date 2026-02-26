@@ -23,7 +23,7 @@ class LLMClient:
         # We will use gemini-1.5-pro as substitute if 3.0 isn't officially available in langchain yet, 
         # but change this to gemini-pro or whatever is desired. Let's use gemini-2.0-pro-exp-0114 if they want bleeding edge, 
         # or just pass whatever string they gave if they specifically need that.
-        self.model_name = "gemini-3-pro-preview" # Using gemini-1.5-pro as it's the stable pro version
+        self.model_name = "gemini-3-pro-preview" # Using gemini-3.0-pro as it's the stable pro version
         self.temperature = temperature
         self._llm = None
         self._initialize_llm()

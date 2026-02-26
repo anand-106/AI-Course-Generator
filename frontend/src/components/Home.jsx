@@ -5,6 +5,7 @@ import Dashboard from "./Dashboard";
 import { Sparkles, BookOpen, LogOut, User, Plus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCourseStream } from "../hooks/useCourseStream";
+import GenyChatbot from "./GenyChatbot";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
@@ -101,7 +102,7 @@ export default function Home() {
           <div className="absolute bottom-20 right-10 w-[500px] h-[500px] bg-neutral-800/20 rounded-full blur-[150px] animate-pulse delay-1000"></div>
         </div>
 
-        <div className="relative z-10 max-w-5xl mx-auto px-6 py-12">
+        <div className="relative z-10 max-w-[1500px] mx-auto px-6 py-12">
 
           {/* Top Bar */}
           <div className="flex justify-between items-center mb-10 animate-fade-in">
@@ -209,6 +210,11 @@ export default function Home() {
           )}
 
         </div>
+
+        {/* Floating AI Chatbot */}
+        {course && (
+          <GenyChatbot courseId={course.course_id} />
+        )}
       </div>
     </div>
   );
