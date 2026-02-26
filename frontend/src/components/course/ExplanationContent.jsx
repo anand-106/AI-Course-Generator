@@ -4,14 +4,15 @@ import { MermaidBlock } from './MermaidBlock';
 import { YouTubeEmbed } from './YouTubeEmbed';
 
 const SECTION_CONFIG = {
-    "Concept Overview": { icon: Info, color: "text-blue-400", bg: "bg-blue-400/5", border: "border-blue-400/20" },
-    "Historical/Conceptual Background": { icon: History, color: "text-slate-400", bg: "bg-white/[0.02]", border: "border-white/10" },
-    "Detailed Technical Explanation": { icon: Cpu, color: "text-purple-400", bg: "bg-purple-400/5", border: "border-purple-400/20" },
-    "Step-by-Step Working": { icon: ListOrdered, color: "text-emerald-400", bg: "bg-emerald-400/5", border: "border-emerald-400/20", isStep: true },
-    "Practical Examples": { icon: Lightbulb, color: "text-orange-400", bg: "bg-orange-400/5", border: "border-orange-400/20", isCallout: true },
-    "Real-World Applications": { icon: Globe, color: "text-indigo-400", bg: "bg-indigo-400/5", border: "border-indigo-400/20" },
-    "Common Mistakes or Confusions": { icon: AlertTriangle, color: "text-red-400", bg: "bg-red-400/5", border: "border-red-400/20", isCallout: true },
-    "Summary Recap": { icon: CheckCircle, color: "text-slate-500", bg: "bg-white/[0.01]", border: "border-white/5", isSoft: true }
+    "Topic Introduction": { icon: Info, color: "text-blue-400", bg: "bg-blue-400/5", border: "border-blue-400/20" },
+    "Core Concepts": { icon: Layers, color: "text-purple-400", bg: "bg-purple-400/5", border: "border-purple-400/20" },
+    "Foundational Background": { icon: History, color: "text-slate-400", bg: "bg-white/[0.02]", border: "border-white/10" },
+    "Detailed Explanation": { icon: Cpu, color: "text-blue-400", bg: "bg-blue-400/5", border: "border-blue-400/20" },
+    "Concept Breakdown / Mechanism / Theory Analysis": { icon: ListOrdered, color: "text-emerald-400", bg: "bg-emerald-400/5", border: "border-emerald-400/20", isStep: true },
+    "Examples / Case Studies / Illustrations": { icon: Lightbulb, color: "text-orange-400", bg: "bg-orange-400/5", border: "border-orange-400/20", isCallout: true },
+    "Applications / Significance": { icon: Globe, color: "text-indigo-400", bg: "bg-indigo-400/5", border: "border-indigo-400/20" },
+    "Key Insights or Important Points": { icon: AlertTriangle, color: "text-red-400", bg: "bg-red-400/5", border: "border-red-400/20", isCallout: true },
+    "Recap Summary": { icon: CheckCircle, color: "text-slate-500", bg: "bg-white/[0.01]", border: "border-white/5", isSoft: true }
 };
 
 function parseMarkdown(text) {
@@ -167,7 +168,7 @@ function SectionRenderer({ title, text, videos, mermaid, usedVideoIndices, merma
 
 function parseSections(text) {
     const titles = Object.keys(SECTION_CONFIG);
-    const pattern = new RegExp(`^\\d\\.\\s+(${titles.join('|').replace(/\//g, '\\/')})\\:?`, 'gmi');
+    const pattern = new RegExp(`^[\\s#\\*]*\\d\\.\\s+(${titles.join('|').replace(/\//g, '\\/')})[:\\*\\s\\-]*`, 'gmi');
 
     const sections = [];
     let match;

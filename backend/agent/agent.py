@@ -270,21 +270,27 @@ AVAILABLE RESOURCES:
 {video_context}
 
 EXPLANATIONS REQUIREMENTS:
-- DO NOT summarize. Expand every concept thoroughly, even small subtopics.
-- Tone: Educational, textbook-level, but clear and readable.
-- For EACH subtopic, follow this strict structure:
-  1. Concept Overview: In-depth definition and fundamental essence.
-  2. Historical/Conceptual Background: Why this exists and its origin (if relevant).
-  3. Detailed Technical Explanation: Deep dive into the mechanics (HOW it works).
-  4. Step-by-Step Working: Process breakdown or logical sequence.
-  5. Practical Examples: Simple analogies and real-world scenarios.
-  6. Real-World Applications: Where is this used in industry or life?
-  7. Common Mistakes or Confusions: Edge cases and misconceptions.
-  8. Summary Recap: A concise wrap-up (only after the full explanation).
-- Include code, syntax, or formal logic where applicable.
-- Use [[MERMAID]] tag in exactly ONE subtopic to place the diagram.
+- DO NOT summarize. Expand every concept thoroughly, providing MAXIMUM detail.
+- Prefer completeness over brevity. Write extremely comprehensive paragraphs.
+- Tone: Educational, professional, and textbook-level.
+
+FOR EVERY SUBTOPIC, you MUST structure your explanation using the following exact numbered headings. Do not alter the names of these headings. You can use markdown like `### 1. Topic Introduction` but the text MUST match exactly one of the following:
+1. Topic Introduction
+2. Core Concepts
+3. Foundational Background
+4. Detailed Explanation
+5. Concept Breakdown / Mechanism / Theory Analysis
+6. Examples / Case Studies / Illustrations
+7. Applications / Significance
+8. Key Insights or Important Points
+9. Recap Summary
+
+Rules for Subtopic Explanations:
+- You must generate AT LEAST 4-5 of the above structure sections for each subtopic.
+- NEVER combine everything into a single short paragraph. Break the text under each heading into detailed, in-depth explanations.
+- Adapt content logically: derive logically for math/physics, explain principles for science, analyze frameworks for humanities. Let the content be natural.
+- Use [[MERMAID]] tag exactly ZERO or ONE time in the entire module's explanations.
 - Video Embedding: Each subtopic {{i}} (0-indexed) has a corresponding Video {{i}}. You MUST embed the tag [[VIDEO_{{i}}]] at the end of the explanation for subtopic {{i}} to provide visual context.
-- Prefer completeness over brevity. No length limit.
 
 DIAGRAM REQUIREMENTS:
 - Format: Mermaid.js (graph LR)
