@@ -387,3 +387,15 @@ Collection status: Available
 User: alin@gmail.com
 [2026-02-26 16:36:12.785203] Successfully saved course 2f896fd6-884d-433f-8916-efdbea5b4766
 [2026-02-26 16:36:12.785203] Stream finished/closed for 2f896fd6-884d-433f-8916-efdbea5b4766
+[2026-02-27 06:36:05.156925] START request for b83beb5f-be3b-4982-a3cf-8ec975b6e52d user=anand@gmail.com prompt=generate a course in java programming
+[2026-02-27 06:37:47.195038] Reached finalize_course for b83beb5f-be3b-4982-a3cf-8ec975b6e52d
+Collection status: Available
+User: anand@gmail.com
+[2026-02-27 06:37:47.678435] Successfully saved course b83beb5f-be3b-4982-a3cf-8ec975b6e52d
+[2026-02-27 06:37:47.680468] Stream finished/closed for b83beb5f-be3b-4982-a3cf-8ec975b6e52d
+[2026-02-27 06:46:50.253769] START request for 8111a020-e871-468b-be6c-eaa0eafde70c user=abin@gmail.com prompt=make a course in java programming
+[2026-02-27 06:48:31.859550] Reached finalize_course for 8111a020-e871-468b-be6c-eaa0eafde70c
+Collection status: Available
+User: abin@gmail.com
+[2026-02-27 06:48:33.288180] Successfully saved course 8111a020-e871-468b-be6c-eaa0eafde70c
+[2026-02-27 06:48:33.290705] Stream finished/closed for 8111a020-e871-468b-be6c-eaa0eafde70c
