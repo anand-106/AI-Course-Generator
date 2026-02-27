@@ -6,6 +6,7 @@ import { Sparkles, BookOpen, LogOut, User, Plus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCourseStream } from "../hooks/useCourseStream";
 import GenyChatbot from "./GenyChatbot";
+import Profile from "./Profile";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
@@ -13,6 +14,7 @@ export default function Home() {
   const { user, logout, getAuthHeaders } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [showInput, setShowInput] = useState(false);
+  const [view, setView] = useState("main"); // "main" or "profile"
 
   const {
     course,
@@ -71,6 +73,7 @@ export default function Home() {
     setCourse(courseData);
     setPrompt("");
     setShowInput(false);
+    setView("main");
     if (courseData.course_id) {
       const url = new URL(window.location);
       url.searchParams.set("courseId", courseData.course_id);
@@ -120,10 +123,13 @@ export default function Home() {
               >
                 <Plus className="w-4 h-4" /> New Course
               </button>
-              <div className="flex items-center gap-3 px-4 py-2 rounded-full border border-neutral-800 bg-neutral-900/50">
-                <User className="w-4 h-4 text-neutral-400" />
-                <span className="text-sm text-neutral-300">{user?.email}</span>
-              </div>
+              <button
+                onClick={() => setView("profile")}
+                className="flex items-center gap-3 px-4 py-2 rounded-full border border-neutral-800 bg-neutral-900/50 hover:border-white/20 transition-all group"
+              >
+                <User className="w-4 h-4 text-neutral-400 group-hover:text-white transition-colors" />
+                <span className="text-sm text-neutral-300 group-hover:text-white transition-colors">{user?.email}</span>
+              </button>
               <button
                 onClick={logout}
                 className="flex items-center gap-2 text-neutral-500 hover:text-white transition-colors"
@@ -134,7 +140,7 @@ export default function Home() {
           </div>
 
           {/* Input Area (Visible if Course is Null and showInput is specific) */}
-          {!course && !loading && showInput && (
+          {view === "main" && !course && !loading && showInput && (
             <div className="max-w-2xl mx-auto mb-16 animate-slide-up">
               <div className="text-center mb-8">
                 <h1 className="text-4xl font-bold text-white mb-4">What do you want to learn?</h1>
@@ -183,12 +189,12 @@ export default function Home() {
           )}
 
           {/* Dashboard View */}
-          {!course && !loading && !showInput && (
+          {view === "main" && !course && !loading && !showInput && (
             <Dashboard onResumeCourse={handleSelectCourse} />
           )}
 
           {/* Result View */}
-          {course && !generating && (
+          {view === "main" && course && !generating && (
             <div className="animate-fade-in-up">
               <div className="flex justify-between items-center mb-6">
                 <button
@@ -200,6 +206,11 @@ export default function Home() {
               </div>
               <CourseRenderer course={course} />
             </div>
+          )}
+
+          {/* Profile View */}
+          {view === "profile" && (
+            <Profile onBack={() => setView("main")} />
           )}
 
           {error && (
