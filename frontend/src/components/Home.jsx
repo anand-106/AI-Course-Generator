@@ -37,6 +37,13 @@ export default function Home() {
     if (courseId) {
       fetchCourse(courseId);
     }
+
+    // Check if user just signed up to redirect to Profile
+    const isNew = localStorage.getItem('is_new_user');
+    if (isNew === 'true') {
+      setView("profile");
+      localStorage.removeItem('is_new_user'); // Only do this once
+    }
   }, []);
 
   async function fetchCourse(courseId) {

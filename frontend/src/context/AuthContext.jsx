@@ -37,6 +37,10 @@ export function AuthProvider({ children }) {
       }
 
       const data = await response.json();
+
+      // Store a flag that this user just signed up to redirect them to profile
+      localStorage.setItem('is_new_user', 'true');
+
       return { success: true, data };
     } catch (error) {
       return { success: false, error: error.message };

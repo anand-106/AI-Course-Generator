@@ -99,7 +99,7 @@ export default function Profile({ onBack }) {
                     className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors group"
                 >
                     <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                    Back to Dashboard
+                    {profile.name ? "Back to Dashboard" : "Skip for now"}
                 </button>
                 {success && (
                     <div className="flex items-center gap-2 text-emerald-400 bg-emerald-400/10 px-4 py-2 rounded-full border border-emerald-400/20 animate-bounce-in">
@@ -108,6 +108,18 @@ export default function Profile({ onBack }) {
                     </div>
                 )}
             </div>
+
+            {!profile.name && (
+                <div className="mb-10 bg-white/5 border border-white/10 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6 animate-slide-up">
+                    <div className="w-16 h-16 bg-white text-black rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <span className="text-2xl font-bold">✨</span>
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-white mb-1">Welcome to COURSEGEN!</h2>
+                        <p className="text-neutral-400 text-sm">Let's take a moment to personalize your experience. This helps our AI tailor courses to your level and goals.</p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
