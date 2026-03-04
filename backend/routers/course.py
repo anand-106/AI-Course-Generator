@@ -213,6 +213,56 @@ async def generate_next_module(course_id: str, current_user: str = Depends(get_c
         raise HTTPException(status_code=500, detail=f"Failed to generate module: {str(e)}")
 
 
+class RegenerateRequest(BaseModel):
+    module_title: str
+    original_data: Dict[str, Any]
+
+
+@router.post("/{course_id}/regenerate_module")
+async def regenerate_module(
+    course_id: str,
+    req: RegenerateRequest,
+    current_user: str = Depends(get_current_user)
+):
+    """Regenerates a specific module with more details."""
+    if courses_collection is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    course_doc = courses_collection.find_one({"course_id": course_id, "user_id": current_user})
+    if not course_doc:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    course_data = course_doc.get("course_data", {})
+    course_title = course_data.get("title", "")
+
+    try:
+        from agent.agent import regenerate_module_content
+        
+        # Generate enhanced content
+        new_content = regenerate_module_content(
+            req.module_title, 
+            req.original_data, 
+            course_title=course_title
+        )
+
+        # Update course data in DB
+        if "modules" in course_data:
+            course_data["modules"][req.module_title] = new_content
+            
+            courses_collection.update_one(
+                {"course_id": course_id},
+                {"$set": {"course_data": course_data}}
+            )
+
+        return {"module": new_content}
+
+    except Exception as e:
+        import traceback
+        print(f"Error regenerating module: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to regenerate module: {str(e)}")
+
+
 @router.get("/{course_id}")
 async def get_course(course_id: str, current_user: str = Depends(get_current_user)):
     if courses_collection is None:

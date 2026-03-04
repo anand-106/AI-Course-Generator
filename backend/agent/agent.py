@@ -93,6 +93,52 @@ Each submodule should represent a single, clear learning unit (e.g., "Arithmetic
 Return ONLY a JSON array of short, descriptive strings.
 """
 
+PROMPT_REGENERATE_SYS = """You are an expert instructional designer. Your task is to REGENERATE and EXPAND an existing course module because the student is struggling to understand it.
+
+GOAL:
+- Provide much deeper, clearer, and more detailed explanations.
+- Breakdown complex concepts into smaller, step-by-step pieces.
+- Add more practical examples, metaphors, and illustrations.
+- DO NOT change the main topic or module title.
+- DO NOT introduce unrelated new topics.
+- Maintain the same structure (subtopics, flashcards, quiz).
+
+CONTENT REQUIREMENTS:
+- Every subtopic must be SIGNIFICANTLY expanded.
+- Use a supportive, encouraging, and extremely clear tone.
+- If a concept was briefly mentioned before, now explain IT in depth.
+
+STRUCTURE:
+1. Topic Introduction
+2. Core Concepts
+3. Foundational Background
+4. Detailed Explanation
+5. Concept Breakdown / Mechanism / Theory Analysis
+6. Examples / Case Studies / Illustrations
+7. Applications / Significance
+8. Key Insights or Important Points
+9. Recap Summary
+
+You MUST include at least 7 of these sections for every subtopic to ensure maximum depth.
+"""
+
+PROMPT_REGENERATE_USER = """
+REGENERATE this module: "{topic}".
+
+ORIGINAL CONTENT SUMMARY:
+{original_content}
+
+Requirements:
+- Use the same subtopics as before: {subtopics}
+- Expand every explanation to be twice as detailed.
+- Add 3 more flashcards (total 8-11).
+- Keep the 6-question quiz format but ensure questions are clear.
+- Update the Mermaid diagram to be more illustrative of the step-by-step process.
+- Preserve the video tags [[VIDEO_i]] at the end of each subtopic.
+
+Return ONLY a JSON object with keys: "explanations", "flashcards", "quiz", "mermaid".
+"""
+
 
 # -------------------------------------------------------------------
 # NODES
@@ -199,6 +245,54 @@ def generate_module_content(topic: str, course_title: str = "") -> Dict[str, Any
         "mermaid": package.get("mermaid", ""),
         "flashcards": package.get("flashcards", []),
         "quiz": package.get("quiz", []),
+    }
+
+
+def regenerate_module_content(topic: str, original_data: Dict[str, Any], course_title: str = "") -> Dict[str, Any]:
+    """Regenerates a module with expanded explanations for struggling students."""
+    subtopics = list(original_data.get("explanations", {}).keys())
+    if not subtopics:
+        subtopics = _generate_subtopics(topic)
+
+    # Extract a bare-bones summary of original content to avoid context bloat but give LLM a base
+    original_summary = ""
+    for st, exp in original_data.get("explanations", {}).items():
+        original_summary += f"### {st}\n{exp[:300]}...\n\n"
+
+    # We reuse the same videos
+    selected_videos = original_data.get("videos", [])
+
+    resp = llm_client.invoke(
+        system_prompt=PROMPT_REGENERATE_SYS,
+        human_prompt_template=PROMPT_REGENERATE_USER,
+        input_vars={
+            "topic": topic,
+            "subtopics": ", ".join(subtopics),
+            "original_content": original_summary
+        },
+        require_json=True
+    )
+
+    if not isinstance(resp, dict):
+        logger.error(f"Failed to regenerate module for '{topic}'")
+        return original_data
+
+    explanations = resp.get("explanations", {})
+    # Ensure video tags are preserved/added back
+    for i, key in enumerate(explanations.keys()):
+        if i < len(selected_videos) and selected_videos[i] is not None:
+            tag = f"[[VIDEO_{i}]]"
+            if tag not in explanations[key]:
+                explanations[key] = explanations[key].strip() + f"\n\n{tag}"
+
+    return {
+        "module_title": topic,
+        "explanations": explanations,
+        "videos": selected_videos,
+        "mermaid": resp.get("mermaid", original_data.get("mermaid", "")),
+        "flashcards": resp.get("flashcards", original_data.get("flashcards", [])),
+        "quiz": resp.get("quiz", original_data.get("quiz", [])),
+        "is_regenerated": True
     }
 
 

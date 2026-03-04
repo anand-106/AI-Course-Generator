@@ -121,6 +121,7 @@ export default function CourseRenderer({ course }) {
               title={topic}
               data={moduleData}
               index={i}
+              courseId={courseId}
               onQuizComplete={handleQuizComplete}
               isGeneratingNext={generatingNext && i === moduleEntries.length - 1}
               isLastModule={i === moduleEntries.length - 1}

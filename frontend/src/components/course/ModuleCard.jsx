@@ -1,13 +1,60 @@
-import React, { useState } from 'react';
-import { ChevronDown, Layers, Check, ArrowRight, Lock, Sparkles } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, Layers, Check, ArrowRight, Lock, Sparkles, RefreshCw, AlertCircle } from "lucide-react";
 import Flashcards from '../Flashcards';
 import Quiz from '../Quiz';
 import { ExplanationContent } from './ExplanationContent';
+import { useAuth } from '../../context/AuthContext';
 
-export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNext, isLastModule }) {
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+
+export function ModuleCard({ title, data, index, courseId, onQuizComplete, isGeneratingNext, isLastModule }) {
     const isLocked = !data;
     const [isExpanded, setIsExpanded] = useState(!isLocked);
     const [quizCompleted, setQuizCompleted] = useState(false);
+    const [quizScore, setQuizScore] = useState(null);
+    const [isRegenerating, setIsRegenerating] = useState(false);
+    const [currentData, setCurrentData] = useState(data);
+    const { getAuthHeaders } = useAuth();
+
+    // Reset currentData if the prop data changes (e.g. from parent)
+    useEffect(() => {
+        if (data) setCurrentData(data);
+    }, [data]);
+
+    const handleRegenerate = async () => {
+        if (!courseId || isRegenerating) return;
+
+        setIsRegenerating(true);
+        try {
+            const response = await fetch(`${API_BASE}/course/${courseId}/regenerate_module`, {
+                method: 'POST',
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    module_title: title,
+                    original_data: currentData
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.module) {
+                    setCurrentData(result.module);
+                    setQuizScore(null);
+                    setQuizCompleted(false);
+                    // Scroll to top of explanations?
+                }
+            } else {
+                console.error("Failed to regenerate module");
+            }
+        } catch (error) {
+            console.error("Error regenerating module:", error);
+        } finally {
+            setIsRegenerating(false);
+        }
+    };
 
     return (
         <div
@@ -33,11 +80,12 @@ export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNex
                             </h2>
                             <div className="flex gap-4 mt-8">
                                 <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/5 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-                                    <Layers className="w-4 h-4" /> Comprehensive Module
+                                    <Layers className="w-4 h-4" /> {currentData?.is_regenerated ? 'Refined Mastery' : 'Comprehensive Module'}
                                 </div>
                                 {quizCompleted && (
-                                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-500 uppercase tracking-[0.2em]">
-                                        <Check className="w-4 h-4" /> Mastery Achieved
+                                    <div className={`flex items-center gap-2 px-4 py-2 rounded-full border text-[10px] font-bold uppercase tracking-[0.2em] ${quizScore >= 40 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-orange-500/10 border-orange-500/20 text-orange-500'}`}>
+                                        {quizScore >= 40 ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                                        {quizScore >= 40 ? 'Mastery Achieved' : 'Needs Review'}
                                     </div>
                                 )}
                             </div>
@@ -52,21 +100,53 @@ export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNex
             </div>
 
             {/* Expanded Content: The Two-Column Mastery System */}
-            {isExpanded && data && (
+            {isExpanded && currentData && (
                 <div className="mt-16 lg:mt-24 animate-fade-in relative z-20 px-4">
                     <div className="grid lg:grid-cols-[1fr_450px] gap-20 xl:gap-32 items-start">
                         {/* Left Side: Deep Educational Flow */}
                         <div className="space-y-40">
                             <div className="space-y-32">
                                 <ExplanationContent
-                                    content={data.explanations}
-                                    videos={data.videos}
-                                    mermaid={data.mermaid}
+                                    content={currentData.explanations}
+                                    videos={currentData.videos}
+                                    mermaid={currentData.mermaid}
                                 />
                             </div>
 
+                            {/* Regeneration section for low scores */}
+                            {quizCompleted && quizScore < 40 && (
+                                <div className="p-12 bg-white/[0.02] border border-orange-500/20 rounded-[3rem] animate-pulse-subtle">
+                                    <div className="flex flex-col md:flex-row items-center gap-10">
+                                        <div className="w-24 h-24 rounded-full bg-orange-500/10 flex items-center justify-center border border-orange-500/30 flex-shrink-0">
+                                            <Sparkles className="w-10 h-10 text-orange-400" />
+                                        </div>
+                                        <div className="flex-1 text-center md:text-left">
+                                            <h4 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Adaptive Support Available</h4>
+                                            <p className="text-slate-400 text-lg leading-relaxed">It looks like you scored below 40% on this quiz. You can regenerate this module with more detailed explanations to improve understanding.</p>
+                                        </div>
+                                        <button
+                                            onClick={handleRegenerate}
+                                            disabled={isRegenerating}
+                                            className="px-10 py-5 bg-orange-500 hover:bg-orange-600 disabled:bg-neutral-800 text-white font-black rounded-2xl transition-all shadow-xl shadow-orange-500/20 flex items-center gap-3 active:scale-95 flex-shrink-0"
+                                        >
+                                            {isRegenerating ? (
+                                                <>
+                                                    <RefreshCw className="w-6 h-6 animate-spin" />
+                                                    <span>Synthesizing...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <RefreshCw className="w-6 h-6" />
+                                                    <span>Regenerate Module</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Detailed Assessment integration */}
-                            {data.quiz && data.quiz.length > 0 && (
+                            {currentData.quiz && currentData.quiz.length > 0 && (
                                 <div className="pt-24 border-t border-white/5">
                                     <div className="mb-16">
                                         <div className="flex items-center gap-4 mb-4">
@@ -78,10 +158,11 @@ export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNex
                                     <div className="p-10 lg:p-14 bg-white/[0.01] rounded-[3.5rem] border border-white/5 shadow-2xl relative overflow-hidden backdrop-blur-sm">
                                         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-[100px] pointer-events-none"></div>
                                         <Quiz
-                                            questions={data.quiz}
+                                            questions={currentData.quiz}
                                             onComplete={(score) => {
+                                                setQuizScore(score.percentage);
                                                 setQuizCompleted(true);
-                                                onQuizComplete(index, score);
+                                                onQuizComplete(index, score.percentage);
                                             }}
                                         />
                                     </div>
@@ -96,9 +177,9 @@ export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNex
                                         <span className="text-white text-sm font-bold tracking-[0.3em] uppercase">Constructing Next Frontier</span>
                                     </div>
                                 ) : (
-                                    isLastModule && quizCompleted && (
+                                    isLastModule && quizCompleted && quizScore >= 40 && (
                                         <button
-                                            onClick={() => onQuizComplete(index, {})}
+                                            onClick={() => onQuizComplete(index, quizScore)}
                                             className="group/btn relative px-16 py-7 bg-white text-black rounded-3xl font-black text-2xl overflow-hidden transition-all hover:scale-[1.05] active:scale-[0.98] shadow-[0_40px_80px_rgba(255,255,255,0.1)]"
                                         >
                                             <div className="relative z-10 flex items-center gap-6">
@@ -128,7 +209,7 @@ export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNex
                                             </div>
                                         </div>
                                     </div>
-                                    <Flashcards cards={data.flashcards} />
+                                    <Flashcards cards={currentData.flashcards} />
                                 </div>
 
                                 {/* Sidebar Help */}
@@ -152,7 +233,7 @@ export function ModuleCard({ title, data, index, onQuizComplete, isGeneratingNex
                             <h3 className="text-2xl font-black text-white mb-10 flex items-center gap-4">
                                 <Layers className="w-6 h-6 text-blue-400" /> Flashcards
                             </h3>
-                            <Flashcards cards={data.flashcards} />
+                            <Flashcards cards={currentData.flashcards} />
                         </div>
                     </div>
                 </div>
