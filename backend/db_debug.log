@@ -429,3 +429,60 @@ Collection status: Available
 User: george@gmail.com
 [2026-05-03 05:24:09.658899] Successfully saved course cac7d834-b6d3-441a-8081-36772c1e5fdc
 [2026-05-03 05:24:09.660274] Stream finished/closed for cac7d834-b6d3-441a-8081-36772c1e5fdc
+[2026-05-03 06:54:32.508611] START request for 3136bc44-42ac-4100-86f3-746457d94691 user=george@gmail.com prompt=make a course in python programming
+[2026-05-03 06:55:11.117454] ERROR in stream for 3136bc44-42ac-4100-86f3-746457d94691: 'dict' object has no attribute 'strip'
+Traceback (most recent call last):
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\routers\course.py", line 45, in event_generator
+    async for chunk in run_workflow_stream(req.prompt, single_step=True):
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\agent\agent.py", line 571, in run_workflow_stream
+    async for event in workflow.astream(initial_state, stream_mode="updates"):
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\.venv\Lib\site-packages\langgraph\pregel\main.py", line 2974, in astream
+    async for _ in runner.atick(
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\.venv\Lib\site-packages\langgraph\pregel\_runner.py", line 304, in atick
+    await arun_with_retry(
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\.venv\Lib\site-packages\langgraph\pregel\_retry.py", line 138, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\.venv\Lib\site-packages\langgraph\_internal\_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\.venv\Lib\site-packages\langgraph\_internal\_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\.venv\Lib\site-packages\langchain_core\runnables\config.py", line 627, in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ANANTH KRISHNAN\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\concurrent\futures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\.venv\Lib\site-packages\langchain_core\runnables\config.py", line 618, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\agent\agent.py", line 305, in node_generate_module
+    state["generated_modules"][current_topic] = generate_module_content(current_topic, course_title=course_title)
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\PROJECTS\AI-Course-Generator-MAIN\backend\agent\agent.py", line 236, in generate_module_content
+    explanations[key] = explanations[key].strip() + f"\n\n{tag}"
+                        ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'dict' object has no attribute 'strip'
+During task with name 'generate_module' and id 'affc4c01-ffbc-4d6d-3016-7d018508a99d'
+
+[2026-05-03 06:55:11.119001] Stream finished/closed for 3136bc44-42ac-4100-86f3-746457d94691
+[2026-05-03 06:57:57.372826] START request for 16714875-5782-4e7b-a285-772753d90c06 user=george@gmail.com prompt=make a course in python programming
+[2026-05-03 06:58:35.494994] Reached finalize_course for 16714875-5782-4e7b-a285-772753d90c06
+Collection status: Available
+User: george@gmail.com
+[2026-05-03 06:58:35.703343] Successfully saved course 16714875-5782-4e7b-a285-772753d90c06
+[2026-05-03 06:58:35.704855] Stream finished/closed for 16714875-5782-4e7b-a285-772753d90c06
+[2026-05-03 07:00:46.352572] START request for 60f35948-2da3-44d9-91e9-ec6a62773ecf user=arjun@gmail.com prompt=make a course in python programming
+[2026-05-03 07:01:29.594963] Reached finalize_course for 60f35948-2da3-44d9-91e9-ec6a62773ecf
+Collection status: Available
+User: arjun@gmail.com
+[2026-05-03 07:01:29.687214] Successfully saved course 60f35948-2da3-44d9-91e9-ec6a62773ecf
+[2026-05-03 07:01:29.687741] Stream finished/closed for 60f35948-2da3-44d9-91e9-ec6a62773ecf
+[2026-05-06 03:55:45.796967] START request for 8d727d01-c809-49d7-aac0-93d0516a035d user=basil@gmail.com prompt=Make a small course in python programming
+[2026-05-06 03:56:30.647432] Reached finalize_course for 8d727d01-c809-49d7-aac0-93d0516a035d
+Collection status: Available
+User: basil@gmail.com
+[2026-05-06 03:56:30.744655] Successfully saved course 8d727d01-c809-49d7-aac0-93d0516a035d
+[2026-05-06 03:56:30.745839] Stream finished/closed for 8d727d01-c809-49d7-aac0-93d0516a035d

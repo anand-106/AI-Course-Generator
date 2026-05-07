@@ -208,6 +208,19 @@ def node_generate_topics(state: CourseState) -> CourseState:
 # PUBLIC HELPERS
 # -------------------------------------------------------------------
 
+def _flatten_explanation(exp: Any) -> str:
+    if isinstance(exp, str):
+        return exp
+    elif isinstance(exp, dict):
+        parts = []
+        for k, v in exp.items():
+            parts.append(f"### {k}\n{v}")
+        return "\n\n".join(parts)
+    elif isinstance(exp, list):
+        return "\n\n".join(str(x) for x in exp)
+    else:
+        return str(exp)
+
 # Removed score_video_relevance
 
 
@@ -230,6 +243,9 @@ def generate_module_content(topic: str, course_title: str = "") -> Dict[str, Any
     # if the LLM didn't already place it, ensuring every subtopic has its corresponding video.
     # We iterate by order since LLMs might slightly alter the dict keys.
     for i, key in enumerate(explanations.keys()):
+        # Flatten in case LLM returned a dict/list instead of string
+        explanations[key] = _flatten_explanation(explanations[key])
+        
         if i < len(selected_videos) and selected_videos[i] is not None:
             tag = f"[[VIDEO_{i}]]"
             if tag not in explanations[key]:
@@ -280,6 +296,7 @@ def regenerate_module_content(topic: str, original_data: Dict[str, Any], course_
     explanations = resp.get("explanations", {})
     # Ensure video tags are preserved/added back
     for i, key in enumerate(explanations.keys()):
+        explanations[key] = _flatten_explanation(explanations[key])
         if i < len(selected_videos) and selected_videos[i] is not None:
             tag = f"[[VIDEO_{i}]]"
             if tag not in explanations[key]:

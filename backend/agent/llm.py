@@ -5,48 +5,51 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 try:
-    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_openai import AzureChatOpenAI
     from langchain_core.prompts import ChatPromptTemplate
 except ImportError:
-    ChatGoogleGenerativeAI = None
+    AzureChatOpenAI = None
     ChatPromptTemplate = None
 
 logger = logging.getLogger(__name__)
 
 class LLMClient:
     """
-    A unified client for interacting with Gemini LLMs (via ChatGoogleGenAI)
+    A unified client for interacting with Azure OpenAI LLMs
     with robust JSON parsing capabilities.
     """
 
-    def __init__(self, model: str = "gemini-3-pro-preview", temperature: float = 0.3):
-        # We will use gemini-1.5-pro as substitute if 3.0 isn't officially available in langchain yet, 
-        # but change this to gemini-pro or whatever is desired. Let's use gemini-2.0-pro-exp-0114 if they want bleeding edge, 
-        # or just pass whatever string they gave if they specifically need that.
-        self.model_name = "gemini-3-pro-preview" # Using gemini-3.0-pro as it's the stable pro version
+    def __init__(self, model: str = "gpt-4o", temperature: float = 0.3):
+        # Initialize with Azure model deployment name (e.g., "gpt-4o" or "gpt-4-turbo")
+        self.model_name = model
         self.temperature = temperature
         self._llm = None
         self._initialize_llm()
 
     def _initialize_llm(self) -> None:
-        """Initialize the ChatGoogleGenerativeAI instance if available."""
-        if ChatGoogleGenerativeAI:
-            api_key = os.getenv("GOOGLE_API_KEY")
-            if not api_key:
-                logger.error("GOOGLE_API_KEY environment variable is not set.")
+        """Initialize the AzureChatOpenAI instance if available."""
+        if AzureChatOpenAI:
+            api_key = os.getenv("AZURE_OPENAI_API_KEY")
+            endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+            api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+            
+            if not api_key or not endpoint:
+                logger.error("AZURE_OPENAI_API_KEY or AZURE_OPENAI_ENDPOINT environment variables are not set.")
                 self._llm = None
                 return
             try:
-                self._llm = ChatGoogleGenerativeAI(
-                    model=self.model_name,
+                self._llm = AzureChatOpenAI(
+                    azure_deployment=self.model_name,
                     temperature=self.temperature,
-                    google_api_key=api_key,
+                    api_version=api_version,
+                    azure_endpoint=endpoint,
+                    api_key=api_key,
                 )
             except Exception as e:
-                logger.error(f"Failed to initialize ChatGoogleGenerativeAI: {e}")
+                logger.error(f"Failed to initialize AzureChatOpenAI: {e}")
                 self._llm = None
         else:
-            logger.warning("langchain-google-genai library not installed or import failed. Ensure langchain-google-genai is installed in the active environment.")
+            logger.warning("langchain-openai library not installed or import failed. Ensure langchain-openai is installed in the active environment.")
 
     @property
     def is_available(self) -> bool:
